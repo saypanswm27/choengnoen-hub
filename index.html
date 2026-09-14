@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบศูนย์รวมช่องทางปฏิบัติงานดิจิทัล | Nannaphat Digital Work Portal</title>
-<link rel="icon" type="image/png" href="assets/mascot-logo.png">
+<link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -50,12 +50,9 @@
     text-align: center;
   }
   #gate img {
-    width: 96px;
-    height: 96px;
+    width: 106px;
+    height: 106px;
     object-fit: contain;
-    border-radius: 20px;
-    background: var(--white);
-    padding: 8px;
   }
   #gate h2 {
     color: var(--white);
@@ -135,12 +132,9 @@
     flex-wrap: wrap;
   }
   .hero-logo {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
-    background: var(--white);
+    width: 79px;
+    height: 79px;
     object-fit: contain;
-    padding: 6px;
     flex-shrink: 0;
     animation: wave-in 0.7s ease-out;
   }
@@ -373,7 +367,7 @@
 
   <!-- Light access gate: a friendly front door, not real security. Change GATE_PASSWORD below before publishing. -->
   <div id="gate">
-    <img src="assets/mascot-logo.png" alt="มาสคอตน้องช้างทางหลวง">
+    <img src="assets/mascot-logo-full.png" alt="มาสคอตน้องช้างทางหลวง">
     <h2>ระบบศูนย์รวมช่องทางปฏิบัติงานดิจิทัล</h2>
     <div class="gate-input-wrap">
       <input type="password" id="gate-input" placeholder="ใส่รหัสผ่านเพื่อเข้าใช้งาน" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -388,7 +382,7 @@
   <div id="app">
     <header class="hero">
       <div class="hero-inner">
-        <img class="hero-logo" src="assets/mascot-logo.png" alt="มาสคอตน้องช้างทางหลวง">
+        <img class="hero-logo" src="assets/mascot-logo-full.png" alt="มาสคอตน้องช้างทางหลวง">
         <div class="hero-text">
           <h1>ระบบศูนย์รวมช่องทางปฏิบัติงานดิจิทัล</h1>
           <p class="eng-name">Nannaphat Digital Work Portal</p>
@@ -414,7 +408,7 @@
 
 <script>
   // ---------- CONFIG: add new sites here, no other code needs to change ----------
-  const GATE_PASSWORD = "sp0885642695"; // เปลี่ยนรหัสนี้ก่อนเผยแพร่จริง
+  const GATE_PASSWORD = "changeme"; // เปลี่ยนรหัสนี้ก่อนเผยแพร่จริง
 
   const categories = [
     { id: 'all', name: 'ทั้งหมด' },
@@ -425,14 +419,14 @@
   const sites = [
     {
       name: "ระบบติดตามงานอุบัติเหตุ",
-      desc: "ข้อมูล อบ. ม.เชิงเนิน",
+      desc: "บันทึกและติดตามอุบัติเหตุบนสายทางในความรับผิดชอบของหมวด",
       url: "https://script.google.com/macros/s/AKfycbzfTgoBclgZ0WVCfNQilgjSuqifh0zxy1mqFgTfweS2CSc0jBTuXG62GrHj1CkEIIg-kw/exec",
       category: "section",
       icon: "🚧"
     },
     {
-      name: "ระบบบริหารงานหมวด",
-      desc: "งานสารบรรณ, สถิติ, พัสดุ, การเงิน",
+      name: "ระบบบริหารหมวด",
+      desc: "ประตูเข้าสู่งานสารบรรณ สถิติ พัสดุ และการเงินของหมวดทั้งหมด",
       url: "https://saypanswm27.github.io/nannaphat-ChoengNoen/choengnoen0-main.html",
       category: "section",
       icon: "📋"
