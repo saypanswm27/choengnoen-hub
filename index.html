@@ -65,13 +65,33 @@
   #gate input {
     font-family: 'Sarabun', sans-serif;
     font-size: 1rem;
-    padding: 12px 16px;
+    padding: 12px 44px 12px 16px;
     border-radius: 10px;
     border: none;
     width: 100%;
     max-width: 280px;
     text-align: center;
   }
+  .gate-input-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+  }
+  .gate-input-wrap input { max-width: none; }
+  .toggle-pw {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    color: var(--ink-light);
+  }
+  .toggle-pw:hover { color: var(--ink); }
   #gate button {
     font-family: 'Kanit', sans-serif;
     background: var(--orange);
@@ -348,7 +368,12 @@
   <div id="gate">
     <img src="assets/mascot-logo.png" alt="มาสคอตน้องช้างทางหลวง">
     <h2>ระบบศูนย์รวมช่องทางปฏิบัติงานดิจิทัล</h2>
-    <input type="password" id="gate-input" placeholder="ใส่รหัสผ่านเพื่อเข้าใช้งาน" autocomplete="off">
+    <div class="gate-input-wrap">
+      <input type="password" id="gate-input" placeholder="ใส่รหัสผ่านเพื่อเข้าใช้งาน" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" class="toggle-pw" id="toggle-pw" aria-label="แสดง/ซ่อนรหัสผ่าน">
+        <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </button>
+    </div>
     <button id="gate-submit">เข้าสู่ระบบ</button>
     <div id="gate-error"></div>
   </div>
@@ -382,7 +407,7 @@
 
 <script>
   // ---------- CONFIG: add new sites here, no other code needs to change ----------
-  const GATE_PASSWORD = "sp0885642695"; // เปลี่ยนรหัสนี้ก่อนเผยแพร่จริง
+  const GATE_PASSWORD = "changeme"; // เปลี่ยนรหัสนี้ก่อนเผยแพร่จริง
 
   const categories = [
     { id: 'all', name: 'ทั้งหมด' },
@@ -416,10 +441,20 @@
   const app = document.getElementById('app');
   const gateInput = document.getElementById('gate-input');
   const gateSubmit = document.getElementById('gate-submit');
+  const togglePw = document.getElementById('toggle-pw');
+  const eyeIcon = document.getElementById('eye-icon');
+
+  togglePw.addEventListener('click', () => {
+    const showing = gateInput.type === 'text';
+    gateInput.type = showing ? 'password' : 'text';
+    eyeIcon.innerHTML = showing
+      ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>'
+      : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.86 19.86 0 0 1 4.22-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+  });
   const gateError = document.getElementById('gate-error');
 
   function tryUnlock() {
-    if (gateInput.value === GATE_PASSWORD) {
+    if (gateInput.value.trim() === GATE_PASSWORD) {
       sessionStorage.setItem('hub_unlocked', '1');
       gate.style.display = 'none';
       app.classList.add('visible');
