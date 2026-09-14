@@ -49,11 +49,23 @@
     padding: 24px;
     text-align: center;
   }
+  .gate-mascot-frame {
+    background: linear-gradient(180deg, #FFFFFF 0%, var(--sand) 100%);
+    border-radius: 22px;
+    padding: 18px 24px 12px;
+    max-width: 260px;
+    width: 100%;
+    box-shadow:
+      0 22px 48px rgba(0,0,0,0.38),
+      0 0 0 1px rgba(255,201,77,0.28),
+      0 0 32px rgba(255,201,77,0.12);
+  }
   #gate img {
-    width: 220px;
-    max-width: 80%;
+    display: block;
+    width: 100%;
     height: auto;
     object-fit: contain;
+    border-radius: 14px;
   }
   #gate h2 {
     color: var(--white);
@@ -368,7 +380,9 @@
 
   <!-- Light access gate: a friendly front door, not real security. Change GATE_PASSWORD below before publishing. -->
   <div id="gate">
-    <img src="assets/gate-welcome.png" alt="มาสคอตน้องช้างทางหลวง ยินดีต้อนรับ">
+    <div class="gate-mascot-frame">
+      <img src="assets/gate-welcome.png" alt="มาสคอตน้องช้างทางหลวง ยินดีต้อนรับ">
+    </div>
     <h2>ระบบศูนย์รวมช่องทางปฏิบัติงานดิจิทัล</h2>
     <div class="gate-input-wrap">
       <input type="password" id="gate-input" placeholder="ใส่รหัสผ่านเพื่อเข้าใช้งาน" autocomplete="off" autocapitalize="off" spellcheck="false">
