@@ -259,6 +259,16 @@
     gap: 14px;
   }
 
+  /* ตัวดันบรรทัด: การ์ดไหนตั้ง rowBreakAfter: true จะมีตัวนี้ต่อท้าย
+     กินเต็มความกว้าง 1 บรรทัด (แต่มองไม่เห็น) เพื่อดันการ์ดถัดไปขึ้นบรรทัดใหม่
+     ส่วนตัวการ์ดเองยังคงขนาดปกติและชิดซ้าย เพราะไม่ได้ยืดเต็มแถวเอง */
+  .card-grid .row-break {
+    grid-column: 1 / -1;
+    height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
   .card {
     background: var(--white);
     border-radius: var(--radius);
@@ -302,7 +312,7 @@
     margin-top: auto;
     padding-top: 4px;
   }
-  .btn-open, .btn-copy {
+  .btn-open {
     font-family: 'Sarabun', sans-serif;
     font-size: 0.85rem;
     font-weight: 600;
@@ -314,8 +324,6 @@
     align-items: center;
     gap: 6px;
     transition: background 0.15s ease;
-  }
-  .btn-open {
     background: var(--sand);
     color: var(--ink);
     flex: 1;
@@ -323,15 +331,31 @@
     justify-content: center;
   }
   .btn-open:hover { background: var(--orange-soft); }
-  .btn-copy {
+
+  /* ปุ่มไอคอนกลม/เหลี่ยมเล็กๆ ข้าง "เปิดระบบ" เช่น ปุ่ม Sheets และปุ่มคัดลอกลิงก์ */
+  .btn-icon {
+    font-family: 'Sarabun', sans-serif;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    position: relative;
     background: var(--sand);
     color: var(--ink-light);
-    position: relative;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
   }
+  .btn-sheet:hover { background: #E1F3E5; color: #2E7D46; }
   .btn-copy:hover { background: var(--yellow); color: var(--navy); }
   .btn-copy.copied { background: #DCEFDD; color: #2E7D46; }
 
-  .copy-toast {
+  /* ข้อความ tooltip ที่โผล่ขึ้นตอนเอาเมาส์ไปชี้ที่ปุ่มไอคอน */
+  .btn-tooltip {
     position: absolute;
     bottom: calc(100% + 8px);
     right: 0;
@@ -346,7 +370,8 @@
     transform: translateY(4px);
     transition: opacity 0.15s ease, transform 0.15s ease;
   }
-  .copy-toast.show { opacity: 1; transform: translateY(0); }
+  .btn-icon:hover .btn-tooltip,
+  .btn-tooltip.show { opacity: 1; transform: translateY(0); }
 
   /* ---------- Empty state ---------- */
   .empty-state {
@@ -434,20 +459,32 @@
 
   const sites = [
     {
+      name: "ระบบบริหารหมวด",
+      desc: "สารบรรณ สถิติ พัสดุ การเงิน",
+      url: "https://saypanswm27.github.io/nannaphat-ChoengNoen/choengnoen0-main.html",
+      sheetUrl: "https://docs.google.com/spreadsheets/d/1bukRgwXzDdj5zcFIGRnjqLlW0sHniKy5C4vLUaVMX7Q/edit?gid=0#gid=0",
+      category: "section",
+      icon: "📋",
+      rowBreakAfter: true
+    },
+    {
       name: "ระบบติดตามงานอุบัติเหตุ",
       desc: "รวมอุบัติเหตุบนสายทาง",
       url: "https://script.google.com/macros/s/AKfycbzfTgoBclgZ0WVCfNQilgjSuqifh0zxy1mqFgTfweS2CSc0jBTuXG62GrHj1CkEIIg-kw/exec",
+      sheetUrl: "https://docs.google.com/spreadsheets/d/1NoRj8XRZyWmtbG3hooMFO80aPzTFkRJbFUCyvZZvf38/edit?gid=0#gid=0",
       category: "section",
       icon: "🚧"
     },
     {
-      name: "ระบบบริหารงานหมวด",
-      desc: "สารบรรณ สถิติ พัสดุ การเงิน",
-      url: "https://saypanswm27.github.io/nannaphat-ChoengNoen/choengnoen0-main.html",
+      name: "ระบบติดตามงานโจรกรรม",
+      desc: "ติดตามเหตุโจรกรรมวัสดุ/ทรัพย์สินบนสายทาง",
+      url: "https://script.google.com/macros/s/AKfycbw9W-oRcL_InzfwG1R-JjOk11F35O2mCeL4wHHWPaSaODiVEIq7CnydCsEypG3fm7Kp5A/exec",
+      sheetUrl: "https://docs.google.com/spreadsheets/d/1gvRQdDGzzYVmTHKLoucgr4yZREvWNm02VM9Sxc-jrWc/edit?gid=0#gid=0",
       category: "section",
-      icon: "📋"
+      icon: "🚨"
     }
-    // เพิ่มระบบใหม่โดยคัดลอกก้อนนี้ แล้วแก้ name / desc / url / category
+    // เพิ่มระบบใหม่โดยคัดลอกก้อนนี้ แล้วแก้ name / desc / url / sheetUrl / category
+    // ใส่ rowBreakAfter: true ถ้าอยากให้การ์ดถัดไปขึ้นบรรทัดใหม่ (การ์ดนี้ยังขนาดปกติ ชิดซ้าย ที่เหลือว่าง)
   ];
 
   let activeCategory = 'all';
@@ -520,11 +557,14 @@
   // ---------- Copy link ----------
   function copyLink(url, btn) {
     navigator.clipboard.writeText(url).then(() => {
-      const toast = btn.querySelector('.copy-toast');
+      const toast = btn.querySelector('.btn-tooltip');
+      const originalText = toast.textContent; // "คัดลอกลิงก์"
       btn.classList.add('copied');
+      toast.textContent = 'คัดลอกแล้ว';
       toast.classList.add('show');
       setTimeout(() => {
         btn.classList.remove('copied');
+        toast.textContent = originalText;
         toast.classList.remove('show');
       }, 1400);
     });
@@ -573,14 +613,24 @@
             </div>
             <div class="card-actions">
               <a class="btn-open" href="${site.url}" target="_blank" rel="noopener">เปิดระบบ</a>
-              <button class="btn-copy" title="คัดลอกลิงก์">
+              ${site.sheetUrl ? `
+              <a class="btn-icon btn-sheet" href="${site.sheetUrl}" target="_blank" rel="noopener">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                <span class="btn-tooltip">เปิด Google Sheets</span>
+              </a>` : ''}
+              <button class="btn-icon btn-copy" type="button">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                <span class="copy-toast">คัดลอกแล้ว</span>
+                <span class="btn-tooltip">คัดลอกลิงก์</span>
               </button>
             </div>
           `;
           card.querySelector('.btn-copy').addEventListener('click', (e) => copyLink(site.url, e.currentTarget));
           grid.appendChild(card);
+          if (site.rowBreakAfter) {
+            const rowBreak = document.createElement('div');
+            rowBreak.className = 'row-break';
+            grid.appendChild(rowBreak);
+          }
         });
         block.appendChild(grid);
       }
