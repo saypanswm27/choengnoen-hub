@@ -87,50 +87,22 @@
 
   .btn-owner {
     margin-left: auto;
-    font-family: 'Sarabun', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 600;
+    width: 40px;
+    height: 40px;
     background: rgba(255,255,255,0.1);
     color: var(--white);
     border: 1px solid rgba(255,255,255,0.25);
-    padding: 8px 14px;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
     transition: background 0.15s ease;
     flex-shrink: 0;
   }
   .btn-owner:hover { background: rgba(255,255,255,0.2); }
   .btn-owner.active { background: var(--orange); border-color: var(--orange); }
   .btn-owner.active:hover { background: #D5651E; }
-
-  .search-wrap {
-    max-width: 900px;
-    margin: -22px auto 0;
-    padding: 0 20px;
-  }
-  .search-box {
-    background: var(--white);
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(22,35,63,0.15);
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .search-box svg { flex-shrink: 0; margin-left: 12px; color: var(--ink-light); }
-  .search-box input {
-    border: none;
-    outline: none;
-    font-family: 'Sarabun', sans-serif;
-    font-size: 1rem;
-    padding: 14px 12px 14px 0;
-    width: 100%;
-    background: transparent;
-    color: var(--ink);
-  }
 
   main {
     max-width: 900px;
@@ -267,9 +239,15 @@
 
   .card-actions {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     margin-top: auto;
     padding-top: 4px;
+  }
+  .card-actions-icons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
   .btn-open {
     font-family: 'Sarabun', sans-serif;
@@ -286,7 +264,6 @@
     background: linear-gradient(135deg, var(--red), var(--red-dark));
     color: var(--white);
     box-shadow: 0 6px 14px -6px var(--red-glow);
-    flex: 1;
     text-decoration: none;
     justify-content: center;
   }
@@ -314,7 +291,8 @@
     text-decoration: none;
     transition: background 0.15s ease, color 0.15s ease;
   }
-  .btn-sheet:hover { background: #E1F3E5; color: #2E7D46; }
+  .btn-firebase:hover { background: #FFF3CD; color: #F57C00; }
+  .btn-github:hover { background: #E7E7E7; color: #24292E; }
   .btn-copy:hover { background: var(--yellow); color: var(--navy); }
   .btn-copy.copied { background: #DCEFDD; color: #2E7D46; }
   .btn-edit:hover { background: #DCEAFB; color: #1D4ED8; }
@@ -450,13 +428,6 @@
   .btn-danger { background: #FBDCDC; color: #C0392B; margin-right: auto; }
   .btn-danger:hover { background: #F6C2C2; }
 
-  footer {
-    text-align: center;
-    padding: 20px;
-    color: var(--ink-light);
-    font-size: 0.8rem;
-  }
-
   @media (max-width: 480px) {
     .hero-text h1 { font-size: 1.25rem; }
     .card-grid { grid-template-columns: 1fr; }
@@ -473,19 +444,11 @@
           <h1>ศูนย์ปฏิบัติงานเชิงเนิน</h1>
           <p class="eng-name">ChoengNoen Work Center</p>
         </div>
-        <button id="btn-owner" class="btn-owner" type="button">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          <span id="btn-owner-label">งานส่วนตัว</span>
+        <button id="btn-owner" class="btn-owner" type="button" title="งานส่วนตัว">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         </button>
       </div>
     </header>
-
-    <div class="search-wrap">
-      <div class="search-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="search-input" placeholder="ค้นหาระบบ...">
-      </div>
-    </div>
 
     <main>
       <div id="config-banner" class="config-banner" style="display:none;">
@@ -494,8 +457,6 @@
       <div class="tabs" id="tabs"></div>
       <div id="categories"></div>
     </main>
-
-    <footer>สร้างและดูแลโดยนันท์นภัสธ์ รัตนเสถียร</footer>
   </div>
 
   <div id="modal-root"></div>
@@ -510,17 +471,12 @@
   let isOwner = false;
   let hasOwnerAccount = null; // null = ยังไม่เช็ค, true/false หลังเช็คแล้ว
   let activeCategory = 'all';
-  let searchTerm = '';
 
   const tabsEl = document.getElementById('tabs');
   const categoriesEl = document.getElementById('categories');
   const modalRoot = document.getElementById('modal-root');
   const btnOwner = document.getElementById('btn-owner');
-  const btnOwnerLabel = document.getElementById('btn-owner-label');
-  const searchInput = document.getElementById('search-input');
   const configBanner = document.getElementById('config-banner');
-
-  searchInput.addEventListener('input', function (e) { searchTerm = e.target.value; renderCategories(); });
 
   /* ---------- ปุ่มงานส่วนตัว / เจ้าของเว็บ ---------- */
   btnOwner.addEventListener('click', async function () {
@@ -534,7 +490,7 @@
   function setOwnerState(owner) {
     isOwner = owner;
     btnOwner.classList.toggle('active', owner);
-    btnOwnerLabel.textContent = owner ? 'ออกจากงานส่วนตัว' : 'งานส่วนตัว';
+    btnOwner.title = owner ? 'ออกจากงานส่วนตัว' : 'งานส่วนตัว';
     if (activeCategory === 'personal' && !owner) activeCategory = 'all';
     if (owner) {
       FBL.watch('sites_private', function () { renderCategories(); }).then(renderAll);
@@ -555,7 +511,11 @@
     modalRoot.innerHTML = `
       <div class="modal-overlay" id="auth-overlay">
         <div class="modal-box">
-          <h3>${isBootstrap ? 'ตั้งรหัสผ่านเจ้าของเว็บ (ครั้งแรก)' : 'เข้าสู่ระบบเจ้าของเว็บ'}</h3>
+          <h3>${isBootstrap ? 'ตั้ง ID และรหัสผ่านเจ้าของเว็บ (ครั้งแรก)' : 'เข้าสู่ระบบเจ้าของเว็บ'}</h3>
+          <div class="modal-field">
+            <label>ID</label>
+            <input type="text" id="auth-id" autocomplete="off">
+          </div>
           <div class="modal-field">
             <label>รหัสผ่าน${isBootstrap ? ' (อย่างน้อย 6 ตัวอักษร)' : ''}</label>
             <input type="password" id="auth-pw" autocomplete="off">
@@ -572,6 +532,7 @@
           </div>
         </div>
       </div>`;
+    const idInput = document.getElementById('auth-id');
     const pwInput = document.getElementById('auth-pw');
     const errorEl = document.getElementById('auth-error');
     document.getElementById('auth-cancel').addEventListener('click', closeModal);
@@ -579,16 +540,18 @@
 
     async function submit() {
       errorEl.textContent = '';
+      const id = idInput.value.trim();
       const pw = pwInput.value;
+      if (!id) { errorEl.textContent = 'กรอก ID'; return; }
       try {
         if (isBootstrap) {
           const pw2 = document.getElementById('auth-pw2').value;
           if (pw.length < 6) { errorEl.textContent = 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร'; return; }
           if (pw !== pw2) { errorEl.textContent = 'รหัสผ่านสองช่องไม่ตรงกัน'; return; }
-          await FBL.bootstrapOwner(pw);
+          await FBL.bootstrapOwner(id, pw);
           hasOwnerAccount = true;
         } else {
-          await FBL.login(pw);
+          await FBL.login(id, pw);
         }
         closeModal();
       } catch (e) {
@@ -596,8 +559,9 @@
       }
     }
     document.getElementById('auth-submit').addEventListener('click', submit);
+    idInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') pwInput.focus(); });
     pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
-    pwInput.focus();
+    idInput.focus();
   }
 
   /* ---------- Modal: เพิ่ม / แก้ไข การ์ดระบบ ---------- */
@@ -610,7 +574,8 @@
           <div class="modal-field"><label>ชื่อระบบ *</label><input type="text" id="site-name" value="${site ? escapeAttr(site.name) : ''}"></div>
           <div class="modal-field"><label>คำอธิบายสั้นๆ</label><input type="text" id="site-desc" value="${site ? escapeAttr(site.desc || '') : ''}"></div>
           <div class="modal-field"><label>ลิงก์เปิดระบบ *</label><input type="text" id="site-url" value="${site ? escapeAttr(site.url || '') : ''}" placeholder="https://..."></div>
-          <div class="modal-field"><label>ลิงก์ Google Sheets (ถ้ามี)</label><input type="text" id="site-sheet" value="${site ? escapeAttr(site.sheetUrl || '') : ''}" placeholder="https://docs.google.com/..."></div>
+          <div class="modal-field"><label>ลิงก์ Firebase (ถ้ามี)</label><input type="text" id="site-firebase" value="${site ? escapeAttr(site.firebaseUrl || '') : ''}" placeholder="https://console.firebase.google.com/..."></div>
+          <div class="modal-field"><label>ลิงก์ Github (ถ้ามี)</label><input type="text" id="site-github" value="${site ? escapeAttr(site.githubUrl || '') : ''}" placeholder="https://github.com/..."></div>
           <div class="modal-field"><label>ไอคอน (emoji)</label><input type="text" id="site-icon" value="${site ? escapeAttr(site.icon || '') : '🔗'}" maxlength="4"></div>
           <label class="checkbox-row"><input type="checkbox" id="site-rowbreak" ${site && site.rowBreakAfter ? 'checked' : ''}> ขึ้นบรรทัดใหม่หลังการ์ดนี้</label>
           <div class="modal-error" id="site-error"></div>
@@ -641,7 +606,8 @@
         name: name,
         desc: document.getElementById('site-desc').value.trim(),
         url: url,
-        sheetUrl: document.getElementById('site-sheet').value.trim(),
+        firebaseUrl: document.getElementById('site-firebase').value.trim(),
+        githubUrl: document.getElementById('site-github').value.trim(),
         icon: document.getElementById('site-icon').value.trim(),
         rowBreakAfter: document.getElementById('site-rowbreak').checked
       };
@@ -695,8 +661,7 @@
 
     catsToShow.forEach(function (catId) {
       const cat = CATS[catId];
-      const sites = FBL.docs(cat.col);
-      const filtered = sites.filter(function (s) { return s.name.toLowerCase().includes(searchTerm.toLowerCase()); });
+      const filtered = FBL.docs(cat.col);
 
       const block = document.createElement('div');
       block.className = 'category-block';
@@ -709,7 +674,7 @@
       if (filtered.length === 0 && !isOwner) {
         const empty = document.createElement('div');
         empty.className = 'empty-state';
-        empty.innerHTML = '<p>' + (searchTerm ? 'ไม่พบระบบที่ค้นหาในหมวดนี้' : 'ยังไม่มีระบบในหมวดนี้') + '</p>';
+        empty.innerHTML = '<p>ยังไม่มีระบบในหมวดนี้</p>';
         block.appendChild(empty);
       } else {
         const grid = document.createElement('div');
@@ -727,9 +692,12 @@
             '</div>' +
             '<div class="card-actions">' +
               '<a class="btn-open" href="' + escapeAttr(site.url) + '" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9 8l4 4-4 4"></path></svg>เปิดระบบ</a>' +
-              (site.sheetUrl ? '<a class="btn-icon btn-sheet" href="' + escapeAttr(site.sheetUrl) + '" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg><span class="btn-tooltip">เปิด Google Sheets</span></a>' : '') +
-              '<button class="btn-icon btn-copy" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="btn-tooltip">คัดลอกลิงก์</span></button>' +
-              (isOwner ? '<button class="btn-icon btn-edit" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span class="btn-tooltip">แก้ไข</span></button>' : '') +
+              '<div class="card-actions-icons">' +
+                (isOwner && site.firebaseUrl ? '<a class="btn-icon btn-firebase" href="' + escapeAttr(site.firebaseUrl) + '" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg><span class="btn-tooltip">เปิด Firebase</span></a>' : '') +
+                (isOwner && site.githubUrl ? '<a class="btn-icon btn-github" href="' + escapeAttr(site.githubUrl) + '" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg><span class="btn-tooltip">เปิด Github</span></a>' : '') +
+                '<button class="btn-icon btn-copy" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="btn-tooltip">คัดลอกลิงก์</span></button>' +
+                (isOwner ? '<button class="btn-icon btn-edit" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span class="btn-tooltip">แก้ไข</span></button>' : '') +
+              '</div>' +
             '</div>';
           card.querySelector('.btn-copy').addEventListener('click', function (e) { copyLink(site.url, e.currentTarget); });
           if (isOwner) card.querySelector('.btn-edit').addEventListener('click', function () { openSiteModal(catId, site); });

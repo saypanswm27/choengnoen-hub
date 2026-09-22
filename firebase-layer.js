@@ -25,8 +25,11 @@
     appId: "1:443440738049:web:77472f2ce7c2994b9b7500"
   };
 
-  // ล็อกอินได้แค่เจ้าของเว็บคนเดียว ใช้อีเมลสังเคราะห์คงที่ (โดเมน .invalid ไม่มีอยู่จริง ไม่มีการส่งอีเมลใดๆ)
-  const OWNER_EMAIL = 'owner@index.invalid';
+  // ล็อกอินได้แค่เจ้าของเว็บคนเดียว ใช้ ID ที่ตั้งเองแปลงเป็นอีเมลสังเคราะห์ (โดเมน .invalid ไม่มีอยู่จริง ไม่มีการส่งอีเมลใดๆ)
+  function idToEmail(id) {
+    const clean = String(id || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    return clean + '@index.invalid';
+  }
 
   const FBL = {};
   window.FBL = FBL;
@@ -56,6 +59,7 @@
       'auth/network-request-failed': 'เชื่อมต่ออินเทอร์เน็ตไม่ได้ ตรวจสอบสัญญาณแล้วลองใหม่',
       'auth/weak-password': 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร',
       'auth/email-already-in-use': 'มีการตั้งรหัสผ่านเจ้าของไว้แล้ว',
+      'auth/invalid-email': 'ID ต้องเป็นตัวอักษร/ตัวเลขภาษาอังกฤษเท่านั้น',
       'auth/unauthorized-domain': 'โดเมนนี้ยังไม่ได้รับอนุญาตใน Firebase (Authentication → Settings → Authorized domains)',
       'permission-denied': 'ไม่มีสิทธิ์ทำรายการนี้ (ตรวจสอบว่าวางกฎ firestore.rules แล้ว และล็อกอินด้วยบัญชีเจ้าของ)',
       'unavailable': 'เชื่อมต่อฐานข้อมูลไม่ได้ในขณะนี้ กรุณาลองใหม่'
@@ -82,13 +86,13 @@
     return d.exists;
   };
 
-  // ตั้งรหัสผ่านเจ้าของครั้งแรก — ใช้ได้แค่ตอนยังไม่มีเอกสาร config/bootstrap (ดู firestore.rules)
-  FBL.bootstrapOwner = async function (password) {
+  // ตั้ง ID + รหัสผ่านเจ้าของครั้งแรก — ใช้ได้แค่ตอนยังไม่มีเอกสาร config/bootstrap (ดู firestore.rules)
+  FBL.bootstrapOwner = async function (id, password) {
     try {
-      const cred = await auth.createUserWithEmailAndPassword(OWNER_EMAIL, password);
+      const cred = await auth.createUserWithEmailAndPassword(idToEmail(id), password);
       const uid = cred.user.uid;
       try {
-        await db.collection('config').doc('bootstrap').set({ uid: uid, at: nowIso() });
+        await db.collection('config').doc('bootstrap').set({ uid: uid, ownerId: id, at: nowIso() });
       } catch (e) {
         try { await cred.user.delete(); } catch (_) { /* ล้างบัญชีที่ค้าง */ }
         throw e;
@@ -97,9 +101,9 @@
     } catch (e) { throw new Error(thErr(e)); }
   };
 
-  FBL.login = async function (password) {
+  FBL.login = async function (id, password) {
     try {
-      await auth.signInWithEmailAndPassword(OWNER_EMAIL, password);
+      await auth.signInWithEmailAndPassword(idToEmail(id), password);
     } catch (e) { throw new Error(thErr(e)); }
   };
 
@@ -158,7 +162,7 @@
     const isNew = !site.__id;
     const data = clean({
       name: site.name, desc: site.desc || '', url: site.url,
-      sheetUrl: site.sheetUrl || '', icon: site.icon || '',
+      firebaseUrl: site.firebaseUrl || '', githubUrl: site.githubUrl || '', icon: site.icon || '',
       rowBreakAfter: !!site.rowBreakAfter,
       order: site.order != null ? site.order : Date.now(),
       updatedAt: nowIso()
