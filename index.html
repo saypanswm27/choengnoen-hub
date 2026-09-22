@@ -7,6 +7,10 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-layer.js"></script>
 <style>
   :root {
     --navy: #16233F;
@@ -35,90 +39,7 @@
     font-family: 'Kanit', sans-serif;
   }
 
-  /* ---------- Access Gate ---------- */
-  #gate {
-    position: fixed;
-    inset: 0;
-    background: var(--navy);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 18px;
-    padding: 24px;
-    text-align: center;
-  }
-  #gate img {
-    width: 317px;
-    max-width: 85%;
-    height: auto;
-    object-fit: contain;
-  }
-  #gate h2 {
-    color: var(--white);
-    margin: 0;
-    font-size: 1.3rem;
-  }
-  #gate input {
-    font-family: 'Sarabun', sans-serif;
-    font-size: 1rem;
-    padding: 12px 44px 12px 16px;
-    border-radius: 10px;
-    border: none;
-    width: 100%;
-    max-width: 280px;
-    text-align: center;
-  }
-  .gate-input-wrap {
-    position: relative;
-    width: 100%;
-    max-width: 280px;
-  }
-  .gate-input-wrap input { max-width: none; }
-  .toggle-pw {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px;
-    display: flex;
-    align-items: center;
-    color: var(--ink-light);
-  }
-  .toggle-pw:hover { color: var(--ink); }
-  #gate .toggle-pw {
-    background: none;
-    color: var(--ink-light);
-    padding: 6px;
-    transform: translateY(-50%);
-  }
-  #gate .toggle-pw:hover { color: var(--ink); transform: translateY(-50%); }
-  #gate button {
-    font-family: 'Kanit', sans-serif;
-    background: var(--orange);
-    color: var(--white);
-    border: none;
-    padding: 12px 28px;
-    border-radius: 10px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: transform 0.15s ease;
-  }
-  #gate button:hover { transform: translateY(-1px); }
-  #gate-error {
-    color: var(--yellow);
-    font-size: 0.9rem;
-    min-height: 1.2em;
-  }
-
   /* ---------- Layout ---------- */
-  #app { display: none; }
-  #app.visible { display: block; }
-
   header.hero {
     background: var(--navy);
     color: var(--white);
@@ -161,7 +82,7 @@
     font-size: 0.95rem;
   }
 
-  .btn-logout {
+  .btn-owner {
     margin-left: auto;
     font-family: 'Sarabun', sans-serif;
     font-size: 0.8rem;
@@ -178,7 +99,9 @@
     transition: background 0.15s ease;
     flex-shrink: 0;
   }
-  .btn-logout:hover { background: rgba(255,255,255,0.2); }
+  .btn-owner:hover { background: rgba(255,255,255,0.2); }
+  .btn-owner.active { background: var(--orange); border-color: var(--orange); }
+  .btn-owner.active:hover { background: #D5651E; }
 
   .search-wrap {
     max-width: 900px;
@@ -210,6 +133,22 @@
     max-width: 900px;
     margin: 0 auto;
     padding: 24px 20px 60px;
+  }
+
+  .config-banner {
+    background: #FFF3CD;
+    color: #664D03;
+    border: 1px solid #FFE69C;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .config-banner code {
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
   }
 
   .tabs {
@@ -332,7 +271,7 @@
   }
   .btn-open:hover { background: var(--orange-soft); }
 
-  /* ปุ่มไอคอนกลม/เหลี่ยมเล็กๆ ข้าง "เปิดระบบ" เช่น ปุ่ม Sheets และปุ่มคัดลอกลิงก์ */
+  /* ปุ่มไอคอนกลม/เหลี่ยมเล็กๆ ข้าง "เปิดระบบ" เช่น ปุ่ม Sheets, คัดลอกลิงก์, แก้ไข, ลบ */
   .btn-icon {
     font-family: 'Sarabun', sans-serif;
     border: none;
@@ -353,6 +292,8 @@
   .btn-sheet:hover { background: #E1F3E5; color: #2E7D46; }
   .btn-copy:hover { background: var(--yellow); color: var(--navy); }
   .btn-copy.copied { background: #DCEFDD; color: #2E7D46; }
+  .btn-edit:hover { background: #DCEAFB; color: #1D4ED8; }
+  .btn-delete:hover { background: #FBDCDC; color: #C0392B; }
 
   /* ข้อความ tooltip ที่โผล่ขึ้นตอนเอาเมาส์ไปชี้ที่ปุ่มไอคอน */
   .btn-tooltip {
@@ -384,16 +325,105 @@
     align-items: center;
     gap: 10px;
   }
-  .empty-state img {
-    width: 130px;
-    object-fit: contain;
-  }
   .empty-state p {
     margin: 0;
     color: var(--ink-light);
     font-size: 0.9rem;
     max-width: 320px;
   }
+
+  /* ---------- ปุ่มเพิ่มระบบ (เจ้าของเว็บเท่านั้น) ---------- */
+  .btn-add-card {
+    border: 1.5px dashed #C9BBA3;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink-light);
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-height: 96px;
+    width: 100%;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .btn-add-card:hover { border-color: var(--orange); color: var(--orange); }
+
+  /* ---------- Modal (ล็อกอินเจ้าของ / เพิ่ม-แก้การ์ด) ---------- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(22,35,63,0.55);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-box {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-box h3 { margin: 0; font-size: 1.15rem; }
+  .modal-field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ink-light);
+    margin-bottom: 4px;
+  }
+  .modal-field input {
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.95rem;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #E3D6C4;
+    width: 100%;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .modal-error {
+    color: #C0392B;
+    font-size: 0.85rem;
+    min-height: 1.1em;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .modal-actions button {
+    font-family: 'Kanit', sans-serif;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 0.95rem;
+  }
+  .btn-primary { background: var(--orange); color: var(--white); }
+  .btn-primary:hover { background: #D5651E; }
+  .btn-secondary { background: var(--sand); color: var(--ink); }
+  .btn-secondary:hover { background: var(--orange-soft); }
+  .btn-danger { background: #FBDCDC; color: #C0392B; margin-right: auto; }
+  .btn-danger:hover { background: #F6C2C2; }
 
   footer {
     text-align: center;
@@ -410,20 +440,6 @@
 </head>
 <body>
 
-  <!-- Light access gate: a friendly front door, not real security. Change GATE_PASSWORD below before publishing. -->
-  <div id="gate">
-    <img src="assets/gate-welcome.png" alt="มาสคอตน้องช้างทางหลวง ยินดีต้อนรับ">
-    <h2>ศูนย์ปฏิบัติงานเชิงเนิน</h2>
-    <div class="gate-input-wrap">
-      <input type="password" id="gate-input" placeholder="ใส่รหัสผ่านเพื่อเข้าใช้งาน" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button type="button" class="toggle-pw" id="toggle-pw" aria-label="แสดง/ซ่อนรหัสผ่าน">
-        <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-      </button>
-    </div>
-    <button id="gate-submit">เข้าสู่ระบบ</button>
-    <div id="gate-error"></div>
-  </div>
-
   <div id="app">
     <header class="hero">
       <div class="hero-inner">
@@ -432,14 +448,24 @@
           <h1>ศูนย์ปฏิบัติงานเชิงเนิน</h1>
           <p class="eng-name">ChoengNoen Work Center</p>
         </div>
-        <button id="btn-logout" class="btn-logout" type="button">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-          ออกจากระบบ
+        <button id="btn-owner" class="btn-owner" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span id="btn-owner-label">งานส่วนตัว</span>
         </button>
       </div>
     </header>
 
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" placeholder="ค้นหาระบบ...">
+      </div>
+    </div>
+
     <main>
+      <div id="config-banner" class="config-banner" style="display:none;">
+        ยังไม่ได้ตั้งค่า Firebase สำหรับเว็บนี้ — เปิดไฟล์ <code>firebase-layer.js</code> แล้วใส่ค่า <code>firebaseConfig</code> จาก Firebase Console ของโปรเจกต์ที่สร้างไว้ (ดูขั้นตอนใน <code>คู่มือติดตั้ง-อ่านก่อน.md</code>)
+      </div>
       <div class="tabs" id="tabs"></div>
       <div id="categories"></div>
     </main>
@@ -447,122 +473,169 @@
     <footer>สร้างและดูแลโดยนันท์นภัสธ์ รัตนเสถียร</footer>
   </div>
 
+  <div id="modal-root"></div>
+
 <script>
-  // ---------- CONFIG: add new sites here, no other code needs to change ----------
-  const GATE_PASSWORD = "sp0885642695"; // เปลี่ยนรหัสนี้ก่อนเผยแพร่จริง
+  // ---------- CATEGORY CONFIG ----------
+  const CATS = {
+    section: { name: 'งานหมวดทางหลวงเชิงเนิน', dotClass: 'dot-section', cardClass: '', col: 'sites_public' },
+    personal: { name: 'งานคุณนันท์นภัสธ์ รัตนเสถียร', dotClass: 'dot-personal', cardClass: 'accent-personal', col: 'sites_private' }
+  };
 
-  const categories = [
-    { id: 'all', name: 'ทั้งหมด' },
-    { id: 'section', name: 'งานหมวดทางหลวงเชิงเนิน', dotClass: 'dot-section', cardClass: '' },
-    { id: 'personal', name: 'งานคุณนันท์นภัสธ์ รัตนเสถียร', dotClass: 'dot-personal', cardClass: 'accent-personal' },
-  ];
-
-  const sites = [
-    {
-      name: "งานบริหารหมวด",
-      desc: "สารบรรณ สถิติ พัสดุ บัญชี",
-      url: "https://saypanswm27.github.io/nannaphat-ChoengNoen/choengnoen0-main.html",
-      sheetUrl: "https://docs.google.com/spreadsheets/d/1bukRgwXzDdj5zcFIGRnjqLlW0sHniKy5C4vLUaVMX7Q/edit?gid=0#gid=0",
-      category: "section",
-      icon: "📋",
-      rowBreakAfter: true
-    },
-    {
-      name: "งานอุบัติเหตุ",
-      desc: "ระบบติดตามงาน อบ.",
-      url: "https://script.google.com/macros/s/AKfycbzfTgoBclgZ0WVCfNQilgjSuqifh0zxy1mqFgTfweS2CSc0jBTuXG62GrHj1CkEIIg-kw/exec",
-      sheetUrl: "https://docs.google.com/spreadsheets/d/1NoRj8XRZyWmtbG3hooMFO80aPzTFkRJbFUCyvZZvf38/edit?gid=0#gid=0",
-      category: "section",
-      icon: "🚧"
-    },
-    {
-      name: "งานโจรกรรม",
-      desc: "ระบบติดตามงาน จร.",
-      url: "https://script.google.com/macros/s/AKfycbw9W-oRcL_InzfwG1R-JjOk11F35O2mCeL4wHHWPaSaODiVEIq7CnydCsEypG3fm7Kp5A/exec",
-      sheetUrl: "https://docs.google.com/spreadsheets/d/1gvRQdDGzzYVmTHKLoucgr4yZREvWNm02VM9Sxc-jrWc/edit?gid=0#gid=0",
-      category: "section",
-      icon: "🚨"
-    }
-    // เพิ่มระบบใหม่โดยคัดลอกก้อนนี้ แล้วแก้ name / desc / url / sheetUrl / category
-    // ใส่ rowBreakAfter: true ถ้าอยากให้การ์ดถัดไปขึ้นบรรทัดใหม่ (การ์ดนี้ยังขนาดปกติ ชิดซ้าย ที่เหลือว่าง)
-  ];
-
+  let isOwner = false;
+  let hasOwnerAccount = null; // null = ยังไม่เช็ค, true/false หลังเช็คแล้ว
   let activeCategory = 'all';
   let searchTerm = '';
 
-  // ---------- Gate ----------
-  const gate = document.getElementById('gate');
-  const app = document.getElementById('app');
-  const gateInput = document.getElementById('gate-input');
-  const gateSubmit = document.getElementById('gate-submit');
-  const togglePw = document.getElementById('toggle-pw');
-  const eyeIcon = document.getElementById('eye-icon');
+  const tabsEl = document.getElementById('tabs');
+  const categoriesEl = document.getElementById('categories');
+  const modalRoot = document.getElementById('modal-root');
+  const btnOwner = document.getElementById('btn-owner');
+  const btnOwnerLabel = document.getElementById('btn-owner-label');
+  const searchInput = document.getElementById('search-input');
+  const configBanner = document.getElementById('config-banner');
 
-  togglePw.addEventListener('click', () => {
-    const showing = gateInput.type === 'text';
-    gateInput.type = showing ? 'password' : 'text';
-    eyeIcon.innerHTML = showing
-      ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>'
-      : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.86 19.86 0 0 1 4.22-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+  searchInput.addEventListener('input', function (e) { searchTerm = e.target.value; renderCategories(); });
+
+  /* ---------- ปุ่มงานส่วนตัว / เจ้าของเว็บ ---------- */
+  btnOwner.addEventListener('click', async function () {
+    if (isOwner) {
+      await FBL.logout();
+      return;
+    }
+    openAuthModal();
   });
-  const gateError = document.getElementById('gate-error');
 
-  function tryUnlock() {
-    if (gateInput.value.trim() === GATE_PASSWORD) {
-      sessionStorage.setItem('hub_unlocked', '1');
-      gate.style.display = 'none';
-      app.classList.add('visible');
+  function setOwnerState(owner) {
+    isOwner = owner;
+    btnOwner.classList.toggle('active', owner);
+    btnOwnerLabel.textContent = owner ? 'ออกจากงานส่วนตัว' : 'งานส่วนตัว';
+    if (activeCategory === 'personal' && !owner) activeCategory = 'all';
+    if (owner) {
+      FBL.watch('sites_private', function () { renderCategories(); }).then(renderAll);
     } else {
-      gateError.textContent = 'รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง';
-      gateInput.value = '';
-      gateInput.focus();
+      FBL.stop && FBL.stop('sites_private');
+      renderAll();
     }
   }
-  gateSubmit.addEventListener('click', tryUnlock);
-  gateInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
 
-  if (sessionStorage.getItem('hub_unlocked') === '1') {
-    gate.style.display = 'none';
-    app.classList.add('visible');
-  } else {
-    gateInput.focus();
+  /* ---------- Modal: ล็อกอิน / ตั้งรหัสผ่านเจ้าของครั้งแรก ---------- */
+  function closeModal() { modalRoot.innerHTML = ''; }
+
+  async function openAuthModal() {
+    if (hasOwnerAccount === null) {
+      try { hasOwnerAccount = await FBL.hasOwner(); } catch (e) { hasOwnerAccount = false; }
+    }
+    const isBootstrap = !hasOwnerAccount;
+    modalRoot.innerHTML = `
+      <div class="modal-overlay" id="auth-overlay">
+        <div class="modal-box">
+          <h3>${isBootstrap ? 'ตั้งรหัสผ่านเจ้าของเว็บ (ครั้งแรก)' : 'เข้าสู่ระบบเจ้าของเว็บ'}</h3>
+          <div class="modal-field">
+            <label>รหัสผ่าน${isBootstrap ? ' (อย่างน้อย 6 ตัวอักษร)' : ''}</label>
+            <input type="password" id="auth-pw" autocomplete="off">
+          </div>
+          ${isBootstrap ? `
+          <div class="modal-field">
+            <label>ยืนยันรหัสผ่านอีกครั้ง</label>
+            <input type="password" id="auth-pw2" autocomplete="off">
+          </div>` : ''}
+          <div class="modal-error" id="auth-error"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="auth-cancel">ยกเลิก</button>
+            <button type="button" class="btn-primary" id="auth-submit">${isBootstrap ? 'ตั้งรหัสผ่าน' : 'เข้าสู่ระบบ'}</button>
+          </div>
+        </div>
+      </div>`;
+    const pwInput = document.getElementById('auth-pw');
+    const errorEl = document.getElementById('auth-error');
+    document.getElementById('auth-cancel').addEventListener('click', closeModal);
+    document.getElementById('auth-overlay').addEventListener('click', function (e) { if (e.target.id === 'auth-overlay') closeModal(); });
+
+    async function submit() {
+      errorEl.textContent = '';
+      const pw = pwInput.value;
+      try {
+        if (isBootstrap) {
+          const pw2 = document.getElementById('auth-pw2').value;
+          if (pw.length < 6) { errorEl.textContent = 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร'; return; }
+          if (pw !== pw2) { errorEl.textContent = 'รหัสผ่านสองช่องไม่ตรงกัน'; return; }
+          await FBL.bootstrapOwner(pw);
+          hasOwnerAccount = true;
+        } else {
+          await FBL.login(pw);
+        }
+        closeModal();
+      } catch (e) {
+        errorEl.textContent = e.message || 'เกิดข้อผิดพลาด';
+      }
+    }
+    document.getElementById('auth-submit').addEventListener('click', submit);
+    pwInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+    pwInput.focus();
   }
 
-  // ---------- Logout ----------
-  const btnLogout = document.getElementById('btn-logout');
-  btnLogout.addEventListener('click', () => {
-    sessionStorage.removeItem('hub_unlocked');
-    app.classList.remove('visible');
-    gate.style.display = 'flex';
-    gateInput.value = '';
-    gateError.textContent = '';
-    gateInput.focus();
-  });
-
-  // ---------- Render tabs ----------
-  const tabsEl = document.getElementById('tabs');
-  categories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.className = 'tab' + (cat.id === activeCategory ? ' active' : '');
-    btn.textContent = cat.name;
-    btn.dataset.cat = cat.id;
-    btn.addEventListener('click', () => {
-      activeCategory = cat.id;
-      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat.id));
-      render();
+  /* ---------- Modal: เพิ่ม / แก้ไข การ์ดระบบ ---------- */
+  function openSiteModal(catId, site) {
+    const isEdit = !!site;
+    modalRoot.innerHTML = `
+      <div class="modal-overlay" id="site-overlay">
+        <div class="modal-box">
+          <h3>${isEdit ? 'แก้ไขระบบ' : 'เพิ่มระบบใหม่'}</h3>
+          <div class="modal-field"><label>ชื่อระบบ *</label><input type="text" id="site-name" value="${site ? escapeAttr(site.name) : ''}"></div>
+          <div class="modal-field"><label>คำอธิบายสั้นๆ</label><input type="text" id="site-desc" value="${site ? escapeAttr(site.desc || '') : ''}"></div>
+          <div class="modal-field"><label>ลิงก์เปิดระบบ *</label><input type="text" id="site-url" value="${site ? escapeAttr(site.url || '') : ''}" placeholder="https://..."></div>
+          <div class="modal-field"><label>ลิงก์ Google Sheets (ถ้ามี)</label><input type="text" id="site-sheet" value="${site ? escapeAttr(site.sheetUrl || '') : ''}" placeholder="https://docs.google.com/..."></div>
+          <div class="modal-field"><label>ไอคอน (emoji)</label><input type="text" id="site-icon" value="${site ? escapeAttr(site.icon || '') : '🔗'}" maxlength="4"></div>
+          <label class="checkbox-row"><input type="checkbox" id="site-rowbreak" ${site && site.rowBreakAfter ? 'checked' : ''}> ขึ้นบรรทัดใหม่หลังการ์ดนี้</label>
+          <div class="modal-error" id="site-error"></div>
+          <div class="modal-actions">
+            ${isEdit ? '<button type="button" class="btn-danger" id="site-delete">ลบระบบนี้</button>' : ''}
+            <button type="button" class="btn-secondary" id="site-cancel">ยกเลิก</button>
+            <button type="button" class="btn-primary" id="site-submit">บันทึก</button>
+          </div>
+        </div>
+      </div>`;
+    const errorEl = document.getElementById('site-error');
+    document.getElementById('site-cancel').addEventListener('click', closeModal);
+    document.getElementById('site-overlay').addEventListener('click', function (e) { if (e.target.id === 'site-overlay') closeModal(); });
+    if (isEdit) {
+      document.getElementById('site-delete').addEventListener('click', async function () {
+        if (!confirm('ลบระบบ "' + site.name + '" ออกจากรายการ?')) return;
+        try { await FBL.deleteSite(CATS[catId].col, site.__id); closeModal(); }
+        catch (e) { errorEl.textContent = e.message || 'ลบไม่สำเร็จ'; }
+      });
+    }
+    document.getElementById('site-submit').addEventListener('click', async function () {
+      const name = document.getElementById('site-name').value.trim();
+      const url = document.getElementById('site-url').value.trim();
+      if (!name || !url) { errorEl.textContent = 'กรอกชื่อระบบและลิงก์เปิดระบบให้ครบ'; return; }
+      const payload = {
+        __id: site ? site.__id : undefined,
+        order: site ? site.order : undefined,
+        name: name,
+        desc: document.getElementById('site-desc').value.trim(),
+        url: url,
+        sheetUrl: document.getElementById('site-sheet').value.trim(),
+        icon: document.getElementById('site-icon').value.trim(),
+        rowBreakAfter: document.getElementById('site-rowbreak').checked
+      };
+      try { await FBL.saveSite(CATS[catId].col, payload); closeModal(); }
+      catch (e) { errorEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
     });
-    tabsEl.appendChild(btn);
-  });
+  }
 
-  // ---------- Copy link ----------
+  function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+  /* ---------- Copy link ---------- */
   function copyLink(url, btn) {
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(url).then(function () {
       const toast = btn.querySelector('.btn-tooltip');
-      const originalText = toast.textContent; // "คัดลอกลิงก์"
+      const originalText = toast.textContent;
       btn.classList.add('copied');
       toast.textContent = 'คัดลอกแล้ว';
       toast.classList.add('show');
-      setTimeout(() => {
+      setTimeout(function () {
         btn.classList.remove('copied');
         toast.textContent = originalText;
         toast.classList.remove('show');
@@ -570,61 +643,71 @@
     });
   }
 
-  // ---------- Render cards ----------
-  const categoriesEl = document.getElementById('categories');
+  /* ---------- Render tabs ---------- */
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    const ids = ['all', 'section'].concat(isOwner ? ['personal'] : []);
+    ids.forEach(function (id) {
+      const label = id === 'all' ? 'ทั้งหมด' : CATS[id].name;
+      const btn = document.createElement('button');
+      btn.className = 'tab' + (id === activeCategory ? ' active' : '');
+      btn.textContent = label;
+      btn.dataset.cat = id;
+      btn.addEventListener('click', function () {
+        activeCategory = id;
+        renderTabs();
+        renderCategories();
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
 
-  function render() {
+  /* ---------- Render cards ---------- */
+  function renderCategories() {
     categoriesEl.innerHTML = '';
-    const realCategories = categories.filter(c => c.id !== 'all');
-    const catsToShow = activeCategory === 'all' ? realCategories : realCategories.filter(c => c.id === activeCategory);
+    const allIds = ['section'].concat(isOwner ? ['personal'] : []);
+    const catsToShow = activeCategory === 'all' ? allIds : allIds.filter(function (id) { return id === activeCategory; });
 
-    catsToShow.forEach(cat => {
-      const filtered = sites.filter(s => s.category === cat.id && s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    catsToShow.forEach(function (catId) {
+      const cat = CATS[catId];
+      const sites = FBL.docs(cat.col);
+      const filtered = sites.filter(function (s) { return s.name.toLowerCase().includes(searchTerm.toLowerCase()); });
 
       const block = document.createElement('div');
       block.className = 'category-block';
 
       const title = document.createElement('h2');
       title.className = 'category-title';
-      title.innerHTML = `<span class="category-dot ${cat.dotClass}"></span>${cat.name}`;
+      title.innerHTML = '<span class="category-dot ' + cat.dotClass + '"></span>' + cat.name;
       block.appendChild(title);
 
-      if (filtered.length === 0) {
+      if (filtered.length === 0 && !isOwner) {
         const empty = document.createElement('div');
         empty.className = 'empty-state';
-        empty.innerHTML = `
-          <img src="assets/mascot-empty.png" alt="ยังไม่มีระบบในหมวดนี้">
-          <p>${searchTerm ? 'ไม่พบระบบที่ค้นหาในหมวดนี้' : 'ยังไม่มีระบบในหมวดนี้ เพิ่มได้เมื่อพัฒนาเสร็จ'}</p>
-        `;
+        empty.innerHTML = '<p>' + (searchTerm ? 'ไม่พบระบบที่ค้นหาในหมวดนี้' : 'ยังไม่มีระบบในหมวดนี้') + '</p>';
         block.appendChild(empty);
       } else {
         const grid = document.createElement('div');
         grid.className = 'card-grid';
-        filtered.forEach(site => {
+        filtered.forEach(function (site) {
           const card = document.createElement('div');
           card.className = 'card ' + cat.cardClass;
-          card.innerHTML = `
-            <div class="card-top">
-              <span class="card-icon">${site.icon || '🔗'}</span>
-              <div>
-                <p class="card-name">${site.name}</p>
-                <p class="card-desc">${site.desc || ''}</p>
-              </div>
-            </div>
-            <div class="card-actions">
-              <a class="btn-open" href="${site.url}" target="_blank" rel="noopener">เปิดระบบ</a>
-              ${site.sheetUrl ? `
-              <a class="btn-icon btn-sheet" href="${site.sheetUrl}" target="_blank" rel="noopener">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                <span class="btn-tooltip">เปิด Google Sheets</span>
-              </a>` : ''}
-              <button class="btn-icon btn-copy" type="button">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                <span class="btn-tooltip">คัดลอกลิงก์</span>
-              </button>
-            </div>
-          `;
-          card.querySelector('.btn-copy').addEventListener('click', (e) => copyLink(site.url, e.currentTarget));
+          card.innerHTML =
+            '<div class="card-top">' +
+              '<span class="card-icon">' + (site.icon || '🔗') + '</span>' +
+              '<div>' +
+                '<p class="card-name">' + escapeAttr(site.name) + '</p>' +
+                '<p class="card-desc">' + escapeAttr(site.desc || '') + '</p>' +
+              '</div>' +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<a class="btn-open" href="' + escapeAttr(site.url) + '" target="_blank" rel="noopener">เปิดระบบ</a>' +
+              (site.sheetUrl ? '<a class="btn-icon btn-sheet" href="' + escapeAttr(site.sheetUrl) + '" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg><span class="btn-tooltip">เปิด Google Sheets</span></a>' : '') +
+              '<button class="btn-icon btn-copy" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="btn-tooltip">คัดลอกลิงก์</span></button>' +
+              (isOwner ? '<button class="btn-icon btn-edit" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span class="btn-tooltip">แก้ไข</span></button>' : '') +
+            '</div>';
+          card.querySelector('.btn-copy').addEventListener('click', function (e) { copyLink(site.url, e.currentTarget); });
+          if (isOwner) card.querySelector('.btn-edit').addEventListener('click', function () { openSiteModal(catId, site); });
           grid.appendChild(card);
           if (site.rowBreakAfter) {
             const rowBreak = document.createElement('div');
@@ -632,6 +715,14 @@
             grid.appendChild(rowBreak);
           }
         });
+        if (isOwner) {
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'btn-add-card';
+          addBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> เพิ่มระบบ';
+          addBtn.addEventListener('click', function () { openSiteModal(catId, null); });
+          grid.appendChild(addBtn);
+        }
         block.appendChild(grid);
       }
 
@@ -639,7 +730,16 @@
     });
   }
 
-  render();
+  function renderAll() { renderTabs(); renderCategories(); }
+
+  /* ---------- เริ่มระบบ ---------- */
+  if (!window.FBL || !FBL.configured) {
+    configBanner.style.display = 'block';
+  } else {
+    FBL.onError = function (msg) { console.error(msg); };
+    FBL.onAuth(function (owner) { setOwnerState(owner); });
+    FBL.watch('sites_public', function () { renderCategories(); }).then(renderAll);
+  }
 </script>
 </body>
 </html>
