@@ -110,7 +110,7 @@
 
   FBL.logout = async function () {
     await auth.signOut();
-    FBL.stopAll();
+    FBL.stop('sites_private'); // คง sites_public ไว้ — ถ้าหยุดด้วย การ์ดงานหมวดจะหายเมื่อล็อกอินใหม่โดยไม่รีโหลดหน้า
     FBL.isOwner = false;
   };
 
@@ -119,7 +119,10 @@
     auth.onAuthStateChanged(async function (u) {
       if (!u) { FBL.isOwner = false; cb(false); return; }
       try {
-        const d = await db.collection('config').doc('bootstrap').get();
+        // อ่านจากแคชในเครื่องก่อน (เร็ว ไม่ต้องรอเน็ต) — สิทธิ์จริงยังบังคับที่ firestore.rules
+        let d = null;
+        try { d = await db.collection('config').doc('bootstrap').get({ source: 'cache' }); } catch (_) { d = null; }
+        if (!d || !d.exists || d.data().uid !== u.uid) d =await db.collection('config').doc('bootstrap').get();
         FBL.isOwner = d.exists && d.data().uid === u.uid;
         if (!FBL.isOwner) await auth.signOut();
         cb(FBL.isOwner);
@@ -151,6 +154,7 @@
   };
   FBL.onError = null;
   FBL.docs = function (col) { return subs[col] ? subs[col].docs : []; };
+  FBL.loaded = function (col) { return !!(subs[col] && subs[col].firstDone); };
   FBL.stop = function (col) {
     if (subs[col]) { subs[col].unsub(); delete subs[col]; }
   };

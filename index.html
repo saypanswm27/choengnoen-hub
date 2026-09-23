@@ -1017,7 +1017,9 @@
     btnHeroImg.style.display = owner ? '' : 'none';
     if (!owner) activeCategory = 'all';
     if (owner) {
+      // วาดหน้าทันที (การ์ดงานหมวดที่โหลดไว้แล้วแสดงได้เลย) แล้วค่อยวาดซ้ำเมื่องานส่วนตัวโหลดเสร็จ
       FBL.watch('sites_private', function () { renderCategories(); }).then(renderAll);
+      renderAll();
     } else {
       FBL.stop && FBL.stop('sites_private');
       renderAll();
@@ -1269,7 +1271,13 @@
         block.appendChild(title);
       }
 
-      if (filtered.length === 0 && !isOwner) {
+      if (!FBL.loaded(cat.col)) {
+        // ยังโหลดข้อมูลหมวดนี้ไม่เสร็จ — แสดง "กำลังโหลด" แทนการ์ดว่าง จะได้ไม่เข้าใจผิดว่าไม่มีระบบ
+        const loading = document.createElement('div');
+        loading.className = 'empty-state';
+        loading.innerHTML = '<p>กำลังโหลด…</p>';
+        block.appendChild(loading);
+      } else if (filtered.length === 0 && !isOwner) {
         const empty = document.createElement('div');
         empty.className = 'empty-state';
         empty.innerHTML = '<p>ยังไม่มีระบบในหมวดนี้</p>';
