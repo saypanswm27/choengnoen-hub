@@ -56,7 +56,7 @@
       var(--hero-bg-image) var(--hero-bg-pos) / cover no-repeat,
       linear-gradient(180deg, #5B9BD5 0%, #8DBCE6 55%, #C7E0F4 100%);
     color: #0A2A4F;
-    padding: 18px 20px;
+    padding: 40px 20px;
   }
   .hero-inner {
     max-width: 900px;
@@ -940,7 +940,7 @@
     btnOwner.classList.toggle('active', owner);
     btnOwner.title = owner ? 'ออกจากงานส่วนตัว' : 'ผู้จัดการ';
     btnHeroImg.style.display = owner ? '' : 'none';
-    if (activeCategory === 'personal' && !owner) activeCategory = 'all';
+    if (!owner) activeCategory = 'all';
     if (owner) {
       FBL.watch('sites_private', function () { renderCategories(); }).then(renderAll);
     } else {
@@ -1106,6 +1106,9 @@
   /* ---------- Render tabs ---------- */
   function renderTabs() {
     tabsEl.innerHTML = '';
+    // คนทั่วไปเห็นแค่หมวดเดียว ไม่ต้องมีแถบเลือก — แสดงเฉพาะตอนผู้จัดการเข้าระบบ
+    tabsEl.style.display = isOwner ? '' : 'none';
+    if (!isOwner) return;
     const ids = ['all', 'section'].concat(isOwner ? ['personal'] : []);
     ids.forEach(function (id) {
       const label = id === 'all' ? 'ทั้งหมด' : CATS[id].name;
