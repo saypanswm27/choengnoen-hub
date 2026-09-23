@@ -26,6 +26,11 @@
     --red: #E0342A;
     --red-dark: #B92A22;
     --red-glow: rgba(224, 52, 42, 0.4);
+    --blue-top: #0B3472;
+    --blue-bottom: #1464B4;
+    --blue-glow: rgba(16, 80, 160, 0.45);
+    --line: #E6E1D8;
+    --paper-2: #F1EEE8;
   }
 
   * { box-sizing: border-box; }
@@ -120,22 +125,32 @@
   .btn-owner.active:hover { background: #D5651E; }
 
   .hero-preview {
-    height: 110px;
-    border-radius: 10px;
-    border: 1.5px solid #E3D6C4;
+    height: 120px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
     background: linear-gradient(180deg, #5B9BD5 0%, #8DBCE6 55%, #C7E0F4 100%);
     background-size: cover;
     background-position: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
   }
-  .hero-hint { font-size: 0.8rem; color: var(--ink-light); margin: 0 0 12px; }
-  .logo-row { display: flex; align-items: center; gap: 12px; }
-  .logo-preview { width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; }
+  .hero-hint { font-size: 0.8rem; color: var(--ink-light); margin: 8px 0 0; line-height: 1.5; }
+  .logo-row {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(180deg, #FFFAF3, #FFFFFF);
+    border: 1px solid #F1D9BD;
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .logo-preview { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
+  .logo-row-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .upload-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .btn-link {
-    background: none; border: none; padding: 0; margin-top: 6px;
+    background: none; border: none; padding: 0;
     color: var(--ink-light); font-size: 0.8rem; text-decoration: underline; cursor: pointer;
     font-family: 'Sarabun', sans-serif;
   }
+  .btn-link:hover { color: var(--orange); }
 
   main {
     max-width: 900px;
@@ -294,15 +309,16 @@
     align-items: center;
     gap: 6px;
     transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    background: linear-gradient(135deg, var(--red), var(--red-dark));
+    /* น้ำเงินไล่เฉดแบบแถบเมนูเว็บกรมทางหลวง: เข้มด้านบน สว่างด้านล่าง */
+    background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom));
     color: var(--white);
-    box-shadow: 0 6px 14px -6px var(--red-glow);
+    box-shadow: 0 6px 14px -6px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,0.12);
     text-decoration: none;
     justify-content: center;
   }
   .btn-open:hover {
-    background: linear-gradient(135deg, var(--red-dark), #8f2018);
-    box-shadow: 0 8px 18px -6px var(--red-glow);
+    background: linear-gradient(180deg, #082A5E, #0D52A0);
+    box-shadow: 0 8px 18px -6px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,0.12);
     transform: translateY(-1px);
   }
 
@@ -389,77 +405,223 @@
   }
   .btn-add-card:hover { border-color: var(--orange); color: var(--orange); }
 
-  /* ---------- Modal (ล็อกอินเจ้าของ / เพิ่ม-แก้การ์ด) ---------- */
+  /* ---------- Modal (ล็อกอินเจ้าของ / เพิ่ม-แก้การ์ด / ตั้งค่าหัวเว็บ) ----------
+     โครง: ส่วนหัว (ป้าย + ชื่อ + ปุ่ม ×) และแถบปุ่มด้านล่าง ตรึงอยู่กับที่
+     เฉพาะเนื้อหา (.modal-body) เลื่อนได้ — แถบเลื่อนจึงไม่พาดทับหัวและมุมโค้งของกล่อง */
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(22,35,63,0.55);
+    background: rgba(10,26,48,0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 200;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
+    animation: modalFade 0.15s ease;
   }
+  @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
   .modal-box {
+    position: relative;
     background: var(--white);
-    border-radius: var(--radius);
-    padding: 24px;
+    border-radius: 20px;
+    border-top: 4px solid var(--orange);
     width: 100%;
-    max-width: 380px;
+    max-width: 440px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 26px 64px -18px rgba(10,26,48,0.5);
+    animation: modalPop 0.18s cubic-bezier(.22,.9,.32,1.2);
+  }
+  .modal-box.modal-wide { max-width: 520px; }
+  @keyframes modalPop {
+    from { opacity: 0; transform: translateY(10px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 24px 10px;
+    flex: none;
+  }
+  .modal-label { font-size: 0.78rem; color: var(--ink-light); }
+  .modal-head h3 {
+    margin: 2px 0 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--navy);
+    line-height: 1.3;
+  }
+  .modal-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--paper-2);
+    color: var(--ink-light);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .modal-close:hover { background: var(--navy); color: var(--white); }
+  .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 18px 14px 24px;
+    margin-right: 6px;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    max-height: 90vh;
-    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #C9C2B6 transparent;
   }
-  .modal-box h3 { margin: 0; font-size: 1.15rem; }
-  .modal-field label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--ink-light);
-    margin-bottom: 4px;
-  }
-  .modal-field input {
-    font-family: 'Sarabun', sans-serif;
-    font-size: 0.95rem;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1.5px solid #E3D6C4;
-    width: 100%;
-  }
-  .checkbox-row {
+  .modal-body::-webkit-scrollbar { width: 8px; }
+  .modal-body::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }
+  .modal-body::-webkit-scrollbar-thumb { background: #C9C2B6; border-radius: 8px; }
+  .modal-body::-webkit-scrollbar-thumb:hover { background: #A89F90; }
+
+  /* หัวข้อย่อยมีเลขลำดับ (แบบเดียวกับระบบอุบัติเหตุ) */
+  .modal-sec {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
     color: var(--ink);
+    margin: 4px 0 -4px;
   }
+  .modal-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--orange);
+    color: var(--white);
+    display: grid;
+    place-items: center;
+    font-size: 0.78rem;
+    flex: none;
+  }
+
+  .modal-field label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-light);
+    margin-bottom: 6px;
+  }
+  .modal-field label .req { color: var(--red); }
+  .modal-field input[type="text"],
+  .modal-field input[type="password"] {
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.95rem;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--white);
+    color: var(--ink);
+    width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .modal-field input[type="text"]:focus,
+  .modal-field input[type="password"]:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(232,114,42,0.15);
+  }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ปุ่มเลือกไฟล์ (ซ่อน input เดิมที่ดูเชย) */
+  .btn-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px dashed #C9BBA3;
+    background: var(--white);
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .btn-upload:hover { border-color: var(--orange); color: var(--orange); background: #FFFAF3; }
+  .btn-upload input { display: none; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .checkbox-row input { width: 17px; height: 17px; accent-color: var(--orange); margin: 0; }
   .modal-error {
     color: #C0392B;
     font-size: 0.85rem;
     min-height: 1.1em;
+    margin-top: -4px;
   }
+  .modal-error:empty { display: none; }
   .modal-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
+    align-items: center;
     justify-content: flex-end;
-    margin-top: 4px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--line);
+    background: var(--white);
+    flex: none;
     flex-wrap: wrap;
   }
   .modal-actions button {
     font-family: 'Kanit', sans-serif;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 9px 18px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    transition: filter 0.15s ease, transform 0.1s ease, background 0.15s ease;
   }
-  .btn-primary { background: var(--orange); color: var(--white); }
-  .btn-primary:hover { background: #D5651E; }
-  .btn-secondary { background: var(--sand); color: var(--ink); }
-  .btn-secondary:hover { background: var(--orange-soft); }
-  .btn-danger { background: #FBDCDC; color: #C0392B; margin-right: auto; }
-  .btn-danger:hover { background: #F6C2C2; }
+  .modal-actions button:active { transform: translateY(1px); }
+  .modal-actions button:disabled { opacity: 0.7; cursor: default; }
+  .btn-primary {
+    background: linear-gradient(135deg, #F07A1F, #E0620F);
+    color: var(--white);
+    box-shadow: 0 4px 12px -2px rgba(224,98,15,0.4);
+  }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-secondary { background: transparent; border-color: var(--line) !important; color: var(--ink); }
+  .btn-secondary:hover { background: var(--paper-2); }
+  .btn-danger { background: #FBE3E1; color: #C0392B; margin-right: auto; }
+  .btn-danger:hover { filter: brightness(0.97); }
+
+  @media (max-width: 480px) {
+    .modal-overlay { padding: 12px; }
+    .modal-head { padding: 16px 18px 8px; }
+    .modal-body { padding: 6px 12px 12px 18px; }
+    .modal-actions { padding: 12px 18px; }
+    .field-grid { grid-template-columns: 1fr; }
+  }
 
   @media (max-width: 480px) {
     .hero-text h1 { font-size: 1.5rem; }
@@ -595,30 +757,37 @@
     const draft = Object.assign({}, hero);
     modalRoot.innerHTML = `
       <div class="modal-overlay" id="hero-overlay">
-        <div class="modal-box">
-          <h3>ตั้งค่าหัวเว็บ</h3>
-
-          <div class="modal-field">
-            <label>รูปโปรไฟล์เว็บ</label>
+        <div class="modal-box modal-wide">
+          <div class="modal-head">
+            <div><div class="modal-label">ตั้งค่า</div><h3>ตั้งค่าหัวเว็บ</h3></div>
+            <button type="button" class="modal-close" data-close title="ปิด">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-sec"><span class="modal-num">1</span> รูปโปรไฟล์เว็บ</div>
             <div class="logo-row">
               <img class="logo-preview" id="logo-preview" alt="">
-              <input type="file" id="logo-file" accept="image/*">
+              <div class="logo-row-actions">
+                <label class="btn-upload">📷 เลือกรูปใหม่<input type="file" id="logo-file" accept="image/*"></label>
+                <button type="button" class="btn-link" id="logo-reset">ใช้รูปเดิม (น้องช้าง)</button>
+              </div>
             </div>
-            <button type="button" class="btn-link" id="logo-reset">ใช้รูปเดิม (น้องช้าง)</button>
+
+            <div class="modal-sec"><span class="modal-num">2</span> ชื่อเว็บ</div>
+            <div class="modal-field"><label>ชื่อเว็บ</label><input type="text" id="hero-title-input" maxlength="100"></div>
+            <div class="modal-field"><label>ชื่อรองเว็บ</label><input type="text" id="hero-subtitle-input" maxlength="150"></div>
+
+            <div class="modal-sec"><span class="modal-num">3</span> รูปพื้นหลังหัวเว็บ</div>
+            <div class="modal-field">
+              <div class="hero-preview" id="hero-preview"></div>
+              <div class="upload-row">
+                <label class="btn-upload">🖼️ เลือกรูปพื้นหลัง<input type="file" id="hero-file" accept="image/*"></label>
+                <button type="button" class="btn-link" id="hero-reset">ใช้พื้นฟ้าเดิม</button>
+              </div>
+              <p class="hero-hint">แนะนำรูปแนวนอน สีอ่อน (เช่น ท้องฟ้า) ตัวหนังสือจะได้อ่านง่าย ระบบจะย่อรูปให้อัตโนมัติ</p>
+            </div>
+
+            <div class="modal-error" id="hero-error"></div>
           </div>
-
-          <div class="modal-field"><label>ชื่อเว็บ</label><input type="text" id="hero-title-input" maxlength="100"></div>
-          <div class="modal-field"><label>ชื่อรองเว็บ</label><input type="text" id="hero-subtitle-input" maxlength="150"></div>
-
-          <div class="modal-field">
-            <label>รูปพื้นหลังหัวเว็บ</label>
-            <div class="hero-preview" id="hero-preview"></div>
-            <p class="hero-hint">แนะนำรูปแนวนอน สีอ่อน (เช่น ท้องฟ้า) ตัวหนังสือจะได้อ่านง่าย ระบบจะย่อรูปให้อัตโนมัติ</p>
-            <input type="file" id="hero-file" accept="image/*">
-            <button type="button" class="btn-link" id="hero-reset">ใช้พื้นฟ้าเดิม</button>
-          </div>
-
-          <div class="modal-error" id="hero-error"></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" id="hero-cancel">ยกเลิก</button>
             <button type="button" class="btn-primary" id="hero-submit">บันทึก</button>
@@ -702,6 +871,9 @@
 
   /* ---------- Modal: ล็อกอิน / ตั้งรหัสผ่านเจ้าของครั้งแรก ---------- */
   function closeModal() { modalRoot.innerHTML = ''; }
+  // ปุ่ม × ทุกหน้าต่าง และกด Esc เพื่อปิด
+  modalRoot.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modalRoot.innerHTML) closeModal(); });
 
   async function openAuthModal() {
     if (hasOwnerAccount === null) {
@@ -711,21 +883,26 @@
     modalRoot.innerHTML = `
       <div class="modal-overlay" id="auth-overlay">
         <div class="modal-box">
-          <h3>${isBootstrap ? 'ตั้ง ID และรหัสผ่านเจ้าของเว็บ (ครั้งแรก)' : 'เข้าสู่ระบบเจ้าของเว็บ'}</h3>
-          <div class="modal-field">
-            <label>ID</label>
-            <input type="text" id="auth-id" autocomplete="off">
+          <div class="modal-head">
+            <div><div class="modal-label">งานส่วนตัว</div><h3>${isBootstrap ? 'ตั้ง ID และรหัสผ่านเจ้าของเว็บ (ครั้งแรก)' : 'เข้าสู่ระบบเจ้าของเว็บ'}</h3></div>
+            <button type="button" class="modal-close" data-close title="ปิด">×</button>
           </div>
-          <div class="modal-field">
-            <label>รหัสผ่าน${isBootstrap ? ' (อย่างน้อย 6 ตัวอักษร)' : ''}</label>
-            <input type="password" id="auth-pw" autocomplete="off">
+          <div class="modal-body">
+            <div class="modal-field">
+              <label>ID</label>
+              <input type="text" id="auth-id" autocomplete="off">
+            </div>
+            <div class="modal-field">
+              <label>รหัสผ่าน${isBootstrap ? ' (อย่างน้อย 6 ตัวอักษร)' : ''}</label>
+              <input type="password" id="auth-pw" autocomplete="off">
+            </div>
+            ${isBootstrap ? `
+            <div class="modal-field">
+              <label>ยืนยันรหัสผ่านอีกครั้ง</label>
+              <input type="password" id="auth-pw2" autocomplete="off">
+            </div>` : ''}
+            <div class="modal-error" id="auth-error"></div>
           </div>
-          ${isBootstrap ? `
-          <div class="modal-field">
-            <label>ยืนยันรหัสผ่านอีกครั้ง</label>
-            <input type="password" id="auth-pw2" autocomplete="off">
-          </div>` : ''}
-          <div class="modal-error" id="auth-error"></div>
           <div class="modal-actions">
             <button type="button" class="btn-secondary" id="auth-cancel">ยกเลิก</button>
             <button type="button" class="btn-primary" id="auth-submit">${isBootstrap ? 'ตั้งรหัสผ่าน' : 'เข้าสู่ระบบ'}</button>
@@ -769,16 +946,28 @@
     const isEdit = !!site;
     modalRoot.innerHTML = `
       <div class="modal-overlay" id="site-overlay">
-        <div class="modal-box">
-          <h3>${isEdit ? 'แก้ไขระบบ' : 'เพิ่มระบบใหม่'}</h3>
-          <div class="modal-field"><label>ชื่อระบบ *</label><input type="text" id="site-name" value="${site ? escapeAttr(site.name) : ''}"></div>
-          <div class="modal-field"><label>คำอธิบายสั้นๆ</label><input type="text" id="site-desc" value="${site ? escapeAttr(site.desc || '') : ''}"></div>
-          <div class="modal-field"><label>ลิงก์เปิดระบบ *</label><input type="text" id="site-url" value="${site ? escapeAttr(site.url || '') : ''}" placeholder="https://..."></div>
-          <div class="modal-field"><label>ลิงก์ Firebase (ถ้ามี)</label><input type="text" id="site-firebase" value="${site ? escapeAttr(site.firebaseUrl || '') : ''}" placeholder="https://console.firebase.google.com/..."></div>
-          <div class="modal-field"><label>ลิงก์ Github (ถ้ามี)</label><input type="text" id="site-github" value="${site ? escapeAttr(site.githubUrl || '') : ''}" placeholder="https://github.com/..."></div>
-          <div class="modal-field"><label>ไอคอน (emoji)</label><input type="text" id="site-icon" value="${site ? escapeAttr(site.icon || '') : '🔗'}" maxlength="4"></div>
-          <label class="checkbox-row"><input type="checkbox" id="site-rowbreak" ${site && site.rowBreakAfter ? 'checked' : ''}> ขึ้นบรรทัดใหม่หลังการ์ดนี้</label>
-          <div class="modal-error" id="site-error"></div>
+        <div class="modal-box modal-wide">
+          <div class="modal-head">
+            <div><div class="modal-label">${escapeAttr(CATS[catId].name)}</div><h3>${isEdit ? 'แก้ไขระบบ' : 'เพิ่มระบบใหม่'}</h3></div>
+            <button type="button" class="modal-close" data-close title="ปิด">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-sec"><span class="modal-num">1</span> ข้อมูลระบบ</div>
+            <div class="modal-field"><label>ชื่อระบบ <span class="req">*</span></label><input type="text" id="site-name" value="${site ? escapeAttr(site.name) : ''}"></div>
+            <div class="modal-field"><label>คำอธิบายสั้นๆ</label><input type="text" id="site-desc" value="${site ? escapeAttr(site.desc || '') : ''}"></div>
+            <div class="modal-field"><label>ไอคอน (emoji)</label><input type="text" id="site-icon" value="${site ? escapeAttr(site.icon || '') : '🔗'}" maxlength="4"></div>
+
+            <div class="modal-sec"><span class="modal-num">2</span> ลิงก์</div>
+            <div class="modal-field"><label>ลิงก์เปิดระบบ <span class="req">*</span></label><input type="text" id="site-url" value="${site ? escapeAttr(site.url || '') : ''}" placeholder="https://..."></div>
+            <div class="field-grid">
+              <div class="modal-field"><label>ลิงก์ Firebase (ถ้ามี)</label><input type="text" id="site-firebase" value="${site ? escapeAttr(site.firebaseUrl || '') : ''}" placeholder="https://console.firebase.google.com/..."></div>
+              <div class="modal-field"><label>ลิงก์ Github (ถ้ามี)</label><input type="text" id="site-github" value="${site ? escapeAttr(site.githubUrl || '') : ''}" placeholder="https://github.com/..."></div>
+            </div>
+
+            <div class="modal-sec"><span class="modal-num">3</span> การแสดงผล</div>
+            <label class="checkbox-row"><input type="checkbox" id="site-rowbreak" ${site && site.rowBreakAfter ? 'checked' : ''}> ขึ้นบรรทัดใหม่หลังการ์ดนี้</label>
+            <div class="modal-error" id="site-error"></div>
+          </div>
           <div class="modal-actions">
             ${isEdit ? '<button type="button" class="btn-danger" id="site-delete">ลบระบบนี้</button>' : ''}
             <button type="button" class="btn-secondary" id="site-cancel">ยกเลิก</button>
