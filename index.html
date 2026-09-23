@@ -141,11 +141,27 @@
     background-position: center;
     margin-bottom: 10px;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
-    touch-action: none;
-    user-select: none;
   }
-  .hero-preview.has-image { cursor: grab; }
-  .hero-preview.dragging { cursor: grabbing; }
+  .preview-label { font-size: 0.8rem; color: var(--ink-light); margin: 0 0 4px; }
+  /* กรอบเลือกส่วนของรูป: แสดงรูปเต็ม + กรอบหัวเว็บให้ลาก ส่วนนอกกรอบจะมืดลง */
+  .crop-stage {
+    position: relative; width: fit-content; max-width: 100%;
+    margin: 0 auto 10px; border-radius: 10px; overflow: hidden;
+    background: #1F2937; touch-action: none; user-select: none; cursor: crosshair;
+  }
+  .crop-stage[hidden] { display: none; }
+  .crop-stage img { display: block; max-width: 100%; max-height: 280px; pointer-events: none; }
+  .crop-frame {
+    position: absolute; left: 0; top: 0;
+    border: 2px solid #FFFFFF; outline: 2px dashed var(--orange); outline-offset: -2px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+    cursor: grab;
+  }
+  .crop-frame span {
+    position: absolute; left: 6px; top: 6px; padding: 2px 8px; border-radius: 6px;
+    background: var(--orange); color: #FFFFFF; font-size: 0.75rem; white-space: nowrap;
+  }
+  .crop-stage.dragging, .crop-stage.dragging .crop-frame { cursor: grabbing; }
   .pos-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.85rem; color: var(--ink-light); }
   .pos-row[hidden] { display: none; }
   .btn-pos {
@@ -841,14 +857,18 @@
 
             <div class="modal-sec"><span class="modal-num">3</span> รูปพื้นหลังหัวเว็บ</div>
             <div class="modal-field">
-              <div class="hero-preview" id="hero-preview" title="ลากรูปเพื่อเลือกส่วนที่จะแสดง"></div>
+              <div class="crop-stage" id="crop-stage" hidden>
+                <img id="crop-img" alt="">
+                <div class="crop-frame" id="crop-frame"><span>ส่วนที่แสดงบนหัวเว็บ</span></div>
+              </div>
               <div class="pos-row" id="pos-row">
-                <span>ตำแหน่ง:</span>
+                <span>ลากกรอบในรูป หรือกด:</span>
                 <button type="button" class="btn-pos" data-pos-y="0">ชิดบน</button>
                 <button type="button" class="btn-pos" data-pos-y="50">กลาง</button>
                 <button type="button" class="btn-pos" data-pos-y="100">ชิดล่าง</button>
-                <span>หรือลากรูปในกรอบด้านบน</span>
               </div>
+              <div class="preview-label">ตัวอย่างหัวเว็บ</div>
+              <div class="hero-preview" id="hero-preview"></div>
               <div class="upload-row">
                 <label class="btn-upload">🖼️ เลือกรูปพื้นหลัง<input type="file" id="hero-file" accept="image/*"></label>
                 <button type="button" class="btn-link" id="hero-reset">ใช้พื้นฟ้าเดิม</button>
@@ -873,44 +893,62 @@
     // ให้กรอบตัวอย่างมีสัดส่วนเท่าหัวเว็บจริง ตำแหน่งที่เห็นจะได้ตรงกับที่แสดงจริง
     previewEl.style.height = Math.max(60, Math.min(180,
       Math.round(previewEl.clientWidth * heroEl.offsetHeight / heroEl.offsetWidth))) + 'px';
+    const cropStageEl = document.getElementById('crop-stage');
+    const cropImgEl = document.getElementById('crop-img');
+    const cropFrameEl = document.getElementById('crop-frame');
     let pos = parsePos(draft.imagePos);
-    let imgSize = null; // ขนาดจริงของรูป ใช้คำนวณระยะลาก
-    function showPos() { previewEl.style.backgroundPosition = fmtPos(pos); }
+    // ขนาดกรอบหัวเว็บบนรูปที่แสดง (ใช้สัดส่วนของหัวเว็บจริงบนจอนี้)
+    function frameGeom() {
+      const dw = cropImgEl.clientWidth, dh = cropImgEl.clientHeight;
+      if (!dw || !dh) return null;
+      const ratio = heroEl.offsetWidth / heroEl.offsetHeight;
+      let fw = dw, fh = dw / ratio;
+      if (fh > dh) { fh = dh; fw = dh * ratio; }
+      return { dw: dw, dh: dh, fw: fw, fh: fh, extraW: dw - fw, extraH: dh - fh };
+    }
+    function showPos() {
+      previewEl.style.backgroundPosition = fmtPos(pos);
+      const g = frameGeom();
+      if (!g) return;
+      cropFrameEl.style.width = g.fw + 'px';
+      cropFrameEl.style.height = g.fh + 'px';
+      cropFrameEl.style.transform = 'translate(' + (g.extraW * pos.x / 100) + 'px,' + (g.extraH * pos.y / 100) + 'px)';
+    }
     function showBg() {
       previewEl.style.backgroundImage = draft.image ? 'url("' + draft.image + '")' : '';
-      previewEl.classList.toggle('has-image', !!draft.image);
       posRowEl.hidden = !draft.image;
+      cropStageEl.hidden = !draft.image;
+      if (draft.image) cropImgEl.src = draft.image; else cropImgEl.removeAttribute('src');
       showPos();
-      imgSize = null;
-      if (draft.image) {
-        const im = new Image();
-        im.onload = function () { imgSize = { w: im.naturalWidth, h: im.naturalHeight }; };
-        im.src = draft.image;
-      }
     }
+    cropImgEl.addEventListener('load', showPos);
     function showLogo() { logoPreviewEl.src = draft.logo || HERO_DEFAULTS.logo; }
 
-    // ลากรูปในกรอบตัวอย่างเพื่อเลือกส่วนที่จะแสดง
+    // ลากกรอบบนรูปเต็มเพื่อเลือกส่วนที่จะแสดง (คลิกนอกกรอบ = ย้ายกรอบไปตรงนั้น)
     let drag = null;
-    previewEl.addEventListener('pointerdown', function (e) {
-      if (!draft.image || !imgSize) return;
-      const bw = previewEl.clientWidth, bh = previewEl.clientHeight;
-      const s = Math.max(bw / imgSize.w, bh / imgSize.h); // สเกลแบบ cover
-      drag = { x0: e.clientX, y0: e.clientY, p0: { x: pos.x, y: pos.y },
-               extraW: imgSize.w * s - bw, extraH: imgSize.h * s - bh };
-      try { previewEl.setPointerCapture(e.pointerId); } catch (err) { /* ไม่เป็นไร */ }
-      previewEl.classList.add('dragging');
+    const clamp = function (v) { return Math.max(0, Math.min(100, v)); };
+    function posFromPointer(e, g) {
+      const r = cropImgEl.getBoundingClientRect();
+      if (g.extraW > 0.5) pos.x = clamp((e.clientX - r.left - g.fw / 2) / g.extraW * 100);
+      if (g.extraH > 0.5) pos.y = clamp((e.clientY - r.top - g.fh / 2) / g.extraH * 100);
+    }
+    cropStageEl.addEventListener('pointerdown', function (e) {
+      const g = frameGeom();
+      if (!draft.image || !g) return;
+      if (!cropFrameEl.contains(e.target)) { posFromPointer(e, g); showPos(); }
+      drag = { x0: e.clientX, y0: e.clientY, p0: { x: pos.x, y: pos.y }, g: g };
+      try { cropStageEl.setPointerCapture(e.pointerId); } catch (err) { /* ไม่เป็นไร */ }
+      cropStageEl.classList.add('dragging');
     });
-    previewEl.addEventListener('pointermove', function (e) {
+    cropStageEl.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      const clamp = function (v) { return Math.max(0, Math.min(100, v)); };
-      if (drag.extraW > 0.5) pos.x = clamp(drag.p0.x - (e.clientX - drag.x0) / drag.extraW * 100);
-      if (drag.extraH > 0.5) pos.y = clamp(drag.p0.y - (e.clientY - drag.y0) / drag.extraH * 100);
+      if (drag.g.extraW > 0.5) pos.x = clamp(drag.p0.x + (e.clientX - drag.x0) / drag.g.extraW * 100);
+      if (drag.g.extraH > 0.5) pos.y = clamp(drag.p0.y + (e.clientY - drag.y0) / drag.g.extraH * 100);
       showPos();
     });
-    function endDrag() { drag = null; previewEl.classList.remove('dragging'); }
-    previewEl.addEventListener('pointerup', endDrag);
-    previewEl.addEventListener('pointercancel', endDrag);
+    function endDrag() { drag = null; cropStageEl.classList.remove('dragging'); }
+    cropStageEl.addEventListener('pointerup', endDrag);
+    cropStageEl.addEventListener('pointercancel', endDrag);
     posRowEl.addEventListener('click', function (e) {
       const b = e.target.closest('[data-pos-y]');
       if (!b) return;
