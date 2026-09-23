@@ -444,7 +444,7 @@
     position: relative;
     background: var(--white);
     border-radius: 20px;
-    border-top: 4px solid var(--orange);
+    border-top: 4px solid var(--blue-bottom);
     width: 100%;
     max-width: 440px;
     max-height: 88vh;
@@ -525,7 +525,7 @@
     width: 22px;
     height: 22px;
     border-radius: 7px;
-    background: var(--orange);
+    background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom));
     color: var(--white);
     display: grid;
     place-items: center;
@@ -556,8 +556,8 @@
   .modal-field input[type="text"]:focus,
   .modal-field input[type="password"]:focus {
     outline: none;
-    border-color: var(--orange);
-    box-shadow: 0 0 0 3px rgba(232,114,42,0.15);
+    border-color: var(--blue-bottom);
+    box-shadow: 0 0 0 3px rgba(20,100,180,0.15);
   }
   .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -577,7 +577,7 @@
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
-  .btn-upload:hover { border-color: var(--orange); color: var(--orange); background: #FFFAF3; }
+  .btn-upload:hover { border-color: var(--blue-bottom); color: var(--blue-bottom); background: #F1F6FC; }
   .btn-upload input { display: none; }
 
   .checkbox-row {
@@ -591,7 +591,7 @@
     border: 1px solid var(--line);
     border-radius: 10px;
   }
-  .checkbox-row input { width: 17px; height: 17px; accent-color: var(--orange); margin: 0; }
+  .checkbox-row input { width: 17px; height: 17px; accent-color: var(--blue-bottom); margin: 0; }
   .modal-error {
     color: #C0392B;
     font-size: 0.85rem;
@@ -623,11 +623,12 @@
   .modal-actions button:active { transform: translateY(1px); }
   .modal-actions button:disabled { opacity: 0.7; cursor: default; }
   .btn-primary {
-    background: linear-gradient(135deg, #F07A1F, #E0620F);
+    /* น้ำเงินไล่เฉดเดียวกับปุ่ม "เปิดระบบ" */
+    background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom));
     color: var(--white);
-    box-shadow: 0 4px 12px -2px rgba(224,98,15,0.4);
+    box-shadow: 0 6px 14px -6px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,0.12);
   }
-  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-primary:hover { background: linear-gradient(180deg, #082A5E, #0D52A0); }
   .btn-secondary { background: transparent; border-color: var(--line) !important; color: var(--ink); }
   .btn-secondary:hover { background: var(--paper-2); }
   .btn-danger { background: #FBE3E1; color: #C0392B; margin-right: auto; }
