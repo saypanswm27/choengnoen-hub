@@ -1138,10 +1138,13 @@
       const block = document.createElement('div');
       block.className = 'category-block';
 
-      const title = document.createElement('h2');
-      title.className = 'category-title';
-      title.innerHTML = '<span class="category-dot ' + cat.dotClass + '"></span>' + cat.name;
-      block.appendChild(title);
+      // คนทั่วไปเห็นหมวดเดียว ชื่อหมวดซ้ำกับชื่อหัวเว็บ — แสดงเฉพาะตอนผู้จัดการเข้าระบบ
+      if (isOwner) {
+        const title = document.createElement('h2');
+        title.className = 'category-title';
+        title.innerHTML = '<span class="category-dot ' + cat.dotClass + '"></span>' + cat.name;
+        block.appendChild(title);
+      }
 
       if (filtered.length === 0 && !isOwner) {
         const empty = document.createElement('div');
