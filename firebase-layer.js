@@ -8,7 +8,7 @@
    โครงสร้างข้อมูล:
      - sites_public  : การ์ดระบบที่ทีมงานเห็นได้เลยโดยไม่ต้องล็อกอิน (อ่านได้ทุกคน, เขียนได้เฉพาะเจ้าของ)
      - sites_private : การ์ดงานส่วนตัว (อ่าน/เขียนได้เฉพาะเจ้าของที่ล็อกอินแล้วเท่านั้น)
-     - settings/hero : { image, logo, title, subtitle, updatedAt } รูปพื้นหลัง/รูปโปรไฟล์/ชื่อเว็บ (อ่านได้ทุกคน, เขียนได้เฉพาะเจ้าของ)
+     - settings/hero : { image, imagePos, logo, title, subtitle, updatedAt } รูปพื้นหลัง/รูปโปรไฟล์/ชื่อเว็บ (อ่านได้ทุกคน, เขียนได้เฉพาะเจ้าของ)
      - config/bootstrap : { uid, at } ระบุว่าใครคือเจ้าของเว็บ ตั้งได้ครั้งเดียว (ดู firestore.rules)
 
    หมายเหตุ: ค่า firebaseConfig ด้านล่างเป็นค่าสาธารณะโดยออกแบบ (ไม่ใช่รหัสลับ)
@@ -180,7 +180,8 @@
   };
 
   /* ---------- ตั้งค่าหัวเว็บ (settings/hero) — ทุกคนเห็น, เปลี่ยนได้เฉพาะเจ้าของ ---------- */
-  // cb({ image, logo, title, subtitle }) — image/logo เป็น data URL ของรูปที่ย่อแล้ว, '' หรือไม่มี = ใช้ค่าเริ่มต้น
+  // cb({ image, imagePos, logo, title, subtitle }) — image/logo เป็น data URL ของรูปที่ย่อแล้ว, '' หรือไม่มี = ใช้ค่าเริ่มต้น
+  // imagePos = ตำแหน่งรูปพื้นหลัง เช่น "50% 30%"
   FBL.watchHero = function (cb) {
     return db.collection('settings').doc('hero').onSnapshot(function (d) {
       cb(d.exists ? d.data() : {});
@@ -191,6 +192,7 @@
     try {
       await db.collection('settings').doc('hero').set(clean({
         image: fields.image || '',
+        imagePos: fields.imagePos || '',
         logo: fields.logo || '',
         title: fields.title || '',
         subtitle: fields.subtitle || '',
