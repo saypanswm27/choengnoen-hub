@@ -17,7 +17,7 @@
     --navy-soft: #223257;
     --orange: #E8722A;
     --orange-soft: #F6D9B8;
-    --sand: #FBF3E7;
+    --sand: #F4F6F9;
     --yellow: #FFC94D;
     --ink: #333B4D;
     --ink-light: #6B7285;
@@ -29,8 +29,8 @@
     --blue-top: #0B3472;
     --blue-bottom: #1464B4;
     --blue-glow: rgba(16, 80, 160, 0.45);
-    --line: #E6E1D8;
-    --paper-2: #F1EEE8;
+    --line: #DDE3EB;
+    --paper-2: #EDF1F6;
   }
 
   * { box-sizing: border-box; }
@@ -71,6 +71,8 @@
     height: 80px;
     object-fit: contain;
     flex-shrink: 0;
+    /* เงาสีขาวรอบวงกลม (drop-shadow ตามรูปทรงจริงของรูป ไม่ใช่กรอบสี่เหลี่ยม) */
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
     animation: wave-in 0.7s ease-out;
   }
   @keyframes wave-in {
@@ -155,11 +157,27 @@
   .hero-hint { font-size: 0.8rem; color: var(--ink-light); margin: 8px 0 0; line-height: 1.5; }
   .logo-row {
     display: flex; align-items: center; gap: 14px;
-    background: linear-gradient(180deg, #FFFAF3, #FFFFFF);
-    border: 1px solid #F1D9BD;
+    background: linear-gradient(180deg, #F4F7FB, #FFFFFF);
+    border: 1px solid var(--line);
     border-radius: 12px;
     padding: 12px 14px;
   }
+  .swatch-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .swatch {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid var(--white); box-shadow: 0 0 0 1px var(--line);
+    cursor: pointer; padding: 0; position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; transition: transform 0.12s ease;
+  }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.selected { box-shadow: 0 0 0 2px var(--ink); }
+  .swatch-default {
+    width: auto; border-radius: 15px; padding: 0 12px;
+    background: var(--paper-2); color: var(--ink); font-family: inherit; font-size: 0.8rem;
+  }
+  .swatch-custom { background: var(--white); overflow: hidden; }
+  .swatch-custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
   .logo-preview { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
   .logo-row-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
   .upload-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -282,7 +300,7 @@
     justify-content: center;
     font-size: 1.35rem;
     line-height: 1;
-    background: linear-gradient(155deg, var(--sand), var(--orange-soft));
+    background: linear-gradient(155deg, #FDF4E8, var(--orange-soft));
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
     transition: transform 0.2s ease;
   }
@@ -741,20 +759,31 @@
     if (cached) applyHero(JSON.parse(cached));
   } catch (e) { /* ไม่มีแคช */ }
 
-  // ย่อรูปก่อนบันทึก เว็บจะได้ไม่ช้า
-  //  - รูปพื้นหลัง: กว้างไม่เกิน 1600px, JPEG ไม่เกิน ~700KB
-  //  - รูปโปรไฟล์: ไม่เกิน 256px, เก็บพื้นใสไว้ (PNG/WebP) ไม่เกิน ~140KB
-  function compressImage(file, opts) {
+  // เตรียมรูปก่อนบันทึก — ใช้ไฟล์ต้นฉบับตามเดิม (ไม่ย่อ ไม่บีบอัด)
+  // ยกเว้นไฟล์ใหญ่เกินที่ฐานข้อมูลเก็บได้ (Firestore จำกัด 1MB ต่อเอกสาร รวมทุกรูป)
+  // จึงค่อยบีบอัดเท่าที่จำเป็น โดยคงความละเอียดเดิมไว้ก่อน แล้วค่อยลดขนาดเป็นทางเลือกสุดท้าย
+  //  - รูปพื้นหลัง: ไม่เกิน ~780KB
+  //  - รูปโปรไฟล์: ไม่เกิน ~200KB เก็บพื้นใสไว้ (PNG/WebP)
+  function readAsDataURL(file) {
+    return new Promise(function (resolve, reject) {
+      const fr = new FileReader();
+      fr.onload = function () { resolve(fr.result); };
+      fr.onerror = function () { reject(new Error('เปิดไฟล์รูปนี้ไม่ได้')); };
+      fr.readAsDataURL(file);
+    });
+  }
+  async function compressImage(file, opts) {
+    const original = await readAsDataURL(file);
+    if (original.length < opts.maxBytes && /^data:image\//.test(original)) return original;
     return new Promise(function (resolve, reject) {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = function () {
         URL.revokeObjectURL(url);
-        const longSide = Math.max(img.naturalWidth, img.naturalHeight);
-        let scale = Math.min(1, opts.maxSize / longSide);
-        let quality = 0.82;
+        let scale = 1;
+        let quality = 0.95;
         const canvas = document.createElement('canvas');
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 16; i++) {
           canvas.width = Math.round(img.naturalWidth * scale);
           canvas.height = Math.round(img.naturalHeight * scale);
           const ctx = canvas.getContext('2d');
@@ -768,7 +797,7 @@
             data = canvas.toDataURL('image/jpeg', quality);
           }
           if (data.length < opts.maxBytes) { resolve(data); return; }
-          if (quality > 0.55) quality -= 0.1; else scale *= 0.8;
+          if (quality > 0.76) quality -= 0.05; else scale *= 0.85;
         }
         reject(new Error('รูปใหญ่เกินไป ลองใช้รูปอื่น'));
       };
@@ -816,7 +845,6 @@
                 <label class="btn-upload">🖼️ เลือกรูปพื้นหลัง<input type="file" id="hero-file" accept="image/*"></label>
                 <button type="button" class="btn-link" id="hero-reset">ใช้พื้นฟ้าเดิม</button>
               </div>
-              <p class="hero-hint">แนะนำรูปแนวนอน สีอ่อน (เช่น ท้องฟ้า) ตัวหนังสือจะได้อ่านง่าย ระบบจะย่อรูปให้อัตโนมัติ</p>
             </div>
 
             <div class="modal-error" id="hero-error"></div>
@@ -893,14 +921,14 @@
       errorEl.textContent = '';
       const file = e.target.files[0];
       if (!file) return;
-      try { draft.image = await compressImage(file, { maxSize: 1600, maxBytes: 700000 }); pos = { x: 50, y: 50 }; showBg(); }
+      try { draft.image = await compressImage(file, { maxBytes: 780000 }); pos = { x: 50, y: 50 }; showBg(); }
       catch (err) { errorEl.textContent = err.message; }
     });
     document.getElementById('logo-file').addEventListener('change', async function (e) {
       errorEl.textContent = '';
       const file = e.target.files[0];
       if (!file) return;
-      try { draft.logo = await compressImage(file, { maxSize: 256, maxBytes: 140000, keepAlpha: true }); showLogo(); }
+      try { draft.logo = await compressImage(file, { maxBytes: 200000, keepAlpha: true }); showLogo(); }
       catch (err) { errorEl.textContent = err.message; }
     });
     document.getElementById('hero-reset').addEventListener('click', function () { draft.image = ''; pos = { x: 50, y: 50 }; showBg(); });
@@ -1046,6 +1074,16 @@
             </div>
 
             <div class="modal-sec"><span class="modal-num">3</span> การแสดงผล</div>
+            <div class="modal-field">
+              <label>สีแถบข้างการ์ด (เลือกให้ตรงกับสีของเว็บที่จะเปิด)</label>
+              <div class="swatch-row" id="site-swatches">
+                <button type="button" class="swatch swatch-default" data-color="" title="ตามหมวด">ตามหมวด</button>
+                ${ACCENT_PRESETS.map(function (p) {
+                  return '<button type="button" class="swatch" data-color="' + p.c + '" title="' + p.n + '" style="background:' + p.c + '"></button>';
+                }).join('')}
+                <label class="swatch swatch-custom" title="เลือกสีอื่น">🎨<input type="color" id="site-color-custom"></label>
+              </div>
+            </div>
             <label class="checkbox-row"><input type="checkbox" id="site-rowbreak" ${site && site.rowBreakAfter ? 'checked' : ''}> ขึ้นบรรทัดใหม่หลังการ์ดนี้</label>
             <div class="modal-error" id="site-error"></div>
           </div>
@@ -1057,6 +1095,30 @@
         </div>
       </div>`;
     const errorEl = document.getElementById('site-error');
+    // เลือกสีแถบข้าง
+    let accentColor = site && isHexColor(site.accentColor) ? site.accentColor.toUpperCase() : '';
+    const swatchesEl = document.getElementById('site-swatches');
+    const customColorEl = document.getElementById('site-color-custom');
+    function showSwatch() {
+      let matched = false;
+      swatchesEl.querySelectorAll('[data-color]').forEach(function (b) {
+        const on = b.dataset.color.toUpperCase() === accentColor;
+        b.classList.toggle('selected', on);
+        if (on) matched = true;
+      });
+      const customEl = customColorEl.parentElement;
+      customEl.classList.toggle('selected', !matched);
+      customEl.style.background = matched ? '' : accentColor;
+      if (accentColor) customColorEl.value = accentColor.toLowerCase();
+    }
+    swatchesEl.addEventListener('click', function (e) {
+      const b = e.target.closest('[data-color]');
+      if (!b) return;
+      accentColor = b.dataset.color.toUpperCase();
+      showSwatch();
+    });
+    customColorEl.addEventListener('input', function () { accentColor = customColorEl.value.toUpperCase(); showSwatch(); });
+    showSwatch();
     document.getElementById('site-cancel').addEventListener('click', closeModal);
     document.getElementById('site-overlay').addEventListener('click', function (e) { if (e.target.id === 'site-overlay') closeModal(); });
     if (isEdit) {
@@ -1079,12 +1141,26 @@
         firebaseUrl: document.getElementById('site-firebase').value.trim(),
         githubUrl: document.getElementById('site-github').value.trim(),
         icon: document.getElementById('site-icon').value.trim(),
+        accentColor: accentColor,
         rowBreakAfter: document.getElementById('site-rowbreak').checked
       };
       try { await FBL.saveSite(CATS[catId].col, payload); closeModal(); }
       catch (e) { errorEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
     });
   }
+
+  // สีสำเร็จรูปของแถบข้างการ์ด — แต่ละสีต่างกันชัด จะได้แยกการ์ดออกง่าย
+  const ACCENT_PRESETS = [
+    { n: 'น้ำเงินกรมท่า', c: '#1E3A6E' },
+    { n: 'ฟ้า', c: '#1E88E5' },
+    { n: 'แดงเลือดหมู', c: '#7A1420' },
+    { n: 'แดง', c: '#D32F2F' },
+    { n: 'ส้ม', c: '#EF6C00' },
+    { n: 'ทอง', c: '#C9A227' },
+    { n: 'เขียว', c: '#2E7D32' },
+    { n: 'ม่วง', c: '#6A1B9A' }
+  ];
+  function isHexColor(s) { return /^#[0-9A-Fa-f]{6}$/.test(s || ''); }
 
   function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
@@ -1158,6 +1234,7 @@
         filtered.forEach(function (site) {
           const card = document.createElement('div');
           card.className = 'card ' + cat.cardClass;
+          if (isHexColor(site.accentColor)) card.style.borderLeftColor = site.accentColor;
           card.innerHTML =
             '<div class="card-top">' +
               '<span class="card-icon">' + (site.icon || '🔗') + '</span>' +

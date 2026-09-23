@@ -164,6 +164,7 @@
     const data = clean({
       name: site.name, desc: site.desc || '', url: site.url,
       firebaseUrl: site.firebaseUrl || '', githubUrl: site.githubUrl || '', icon: site.icon || '',
+      accentColor: site.accentColor || '', // สีแถบข้างการ์ด "#RRGGBB" — '' = ใช้สีตามหมวด
       rowBreakAfter: !!site.rowBreakAfter,
       order: site.order != null ? site.order : Date.now(),
       updatedAt: nowIso()
