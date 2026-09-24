@@ -608,6 +608,29 @@
     border-color: var(--blue-bottom);
     box-shadow: 0 0 0 3px rgba(20,100,180,0.15);
   }
+  /* ช่องรหัสผ่าน + ปุ่มรูปตาสำหรับดู/ซ่อนรหัสผ่าน */
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 44px !important; }
+  .pw-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-light);
+    cursor: pointer;
+  }
+  .pw-toggle:hover { background: rgba(20,100,180,0.08); color: var(--blue-bottom); }
+  .pw-toggle svg { width: 20px; height: 20px; }
+  .pw-toggle .eye-off { display: none; }
+  .pw-toggle.showing .eye-on { display: none; }
+  .pw-toggle.showing .eye-off { display: block; }
   .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   /* ปุ่มเลือกไฟล์ (ซ่อน input เดิมที่ดูเชย) */
@@ -1039,6 +1062,24 @@
   modalRoot.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) closeModal(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && modalRoot.innerHTML && !document.getElementById('hero-overlay')) closeModal(); });
 
+  // ปุ่มรูปตาในช่องรหัสผ่าน: กดเพื่อสลับแสดง/ซ่อนรหัสผ่าน
+  const PW_TOGGLE_BTN = `<button type="button" class="pw-toggle" title="แสดงรหัสผ่าน" aria-label="แสดงรหัสผ่าน">
+    <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+  </button>`;
+  modalRoot.addEventListener('click', function (e) {
+    const btn = e.target.closest('.pw-toggle');
+    if (!btn) return;
+    const input = btn.parentElement.querySelector('input');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.classList.toggle('showing', show);
+    const label = show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    input.focus();
+  });
+
   async function openAuthModal() {
     if (hasOwnerAccount === null) {
       try { hasOwnerAccount = await FBL.hasOwner(); } catch (e) { hasOwnerAccount = false; }
@@ -1058,12 +1099,12 @@
             </div>
             <div class="modal-field">
               <label>รหัสผ่าน${isBootstrap ? ' (อย่างน้อย 6 ตัวอักษร)' : ''}</label>
-              <input type="password" id="auth-pw" autocomplete="off">
+              <div class="pw-wrap"><input type="password" id="auth-pw" autocomplete="off">${PW_TOGGLE_BTN}</div>
             </div>
             ${isBootstrap ? `
             <div class="modal-field">
               <label>ยืนยันรหัสผ่านอีกครั้ง</label>
-              <input type="password" id="auth-pw2" autocomplete="off">
+              <div class="pw-wrap"><input type="password" id="auth-pw2" autocomplete="off">${PW_TOGGLE_BTN}</div>
             </div>` : ''}
             <div class="modal-error" id="auth-error"></div>
           </div>
