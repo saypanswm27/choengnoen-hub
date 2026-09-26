@@ -873,7 +873,7 @@
     const q = S.wcSearch.trim().toLowerCase();
     const list = all.filter(function (x) {
       if (S.wcGroup !== '*' && wcGroupOf(x.code) !== S.wcGroup) return false;
-      return !q || (x.code + ' ' + x.name + ' ' + (x.nameEn || '') + ' ' + (x.units || []).join(' ')).toLowerCase().indexOf(q) >= 0;
+      return !q || (x.code + ' ' + x.name + ' ' + (x.nameEn || '') + ' ' + (x.units || []).join(' ') + ' ' + (x.description || '')).toLowerCase().indexOf(q) >= 0;
     });
     const changed = changedIds('workcodes', 'code');
     let h = '<div class="panel"><div class="toolbar">' +
@@ -894,7 +894,8 @@
         const head = !(x.units || []).length;
         const pad = wcDepth(x, byCode) * 16;
         h += '<tr class="' + (changed.has(x.code) ? 'changed' : '') + '"><td style="white-space:nowrap;padding-left:' + (10 + pad) + 'px">' + (head ? '<b>' + esc(x.code) + '</b>' : esc(x.code)) + '</td>' +
-          '<td class="wrap" style="min-width:280px">' + (head ? '<b>' + esc(x.name) + '</b>' : esc(x.name)) + (x.nameEn ? '<div class="hint">' + esc(x.nameEn) + '</div>' : '') + '</td>' +
+          '<td class="wrap" style="min-width:280px">' + (head ? '<b>' + esc(x.name) + '</b>' : esc(x.name)) + (x.nameEn ? '<div class="hint">' + esc(x.nameEn) + '</div>' : '') +
+            (x.description ? '<details style="margin-top:4px"><summary class="hint" style="cursor:pointer">ลักษณะงาน' + (x.output ? ' · ผลผลิต: ' + esc(x.output) : '') + '</summary><div style="white-space:pre-line;margin-top:4px;font-size:.92em">' + esc(x.description) + '</div></details>' : '') + '</td>' +
           '<td>' + (head ? '<span class="hint">หัวข้อหมวด</span>' : (x.units || []).map(function (u, i) { return '<span class="pill"' + (i ? ' style="opacity:.75"' : '') + '>' + esc(u) + '</span>'; }).join(' ')) + '</td>' +
           (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="wc-edit" data-id="' + esc(x.code) + '">แก้ไข</button> ' +
             '<button class="btn sm danger" type="button" data-act="wc-del" data-id="' + esc(x.code) + '">ลบ</button></td>' : '') + '</tr>';
@@ -915,7 +916,7 @@
       field('nameEn', 'ชื่อภาษาอังกฤษ', x.nameEn, 'text', '', 'full') +
       field('units', 'หน่วยนับ (คั่นด้วย , ถ้ามีหลายหน่วย)', (x.units || []).join(', '), 'text', 'placeholder="เช่น ม., ตร.ม., ลบ.ม."', 'full') +
       field('output', 'ผลผลิต', x.output, 'text', '', 'full') +
-      '<label class="f full">คำอธิบายลักษณะงาน<textarea name="description" rows="3">' + esc(x.description) + '</textarea></label>' +
+      '<label class="f full">คำอธิบายลักษณะงาน<textarea name="description" rows="6">' + esc(x.description) + '</textarea></label>' +
       '</div><p class="hint">หน่วยแรกคือหน่วยหลัก ระบบงานจะใช้เป็นค่าเริ่มต้น ปล่อยหน่วยนับว่าง = เป็นหัวข้อหมวด (ไม่ใช่รหัสที่ลงผลงานได้) · ผลผลิตและคำอธิบาย แสดงในหน้าข้อมูลอ้างอิงงานของระบบบริหารหมวด</p>',
       function (f) {
         const o = { code: f.code.trim(), name: f.name.trim(), nameEn: f.nameEn.trim(), units: parseUnits(f.units), parent: f.parent.trim() };
@@ -1039,7 +1040,7 @@
         'ข้อมูลที่นำเข้าจะเป็นฉบับร่างก่อน ตรวจดูในแต่ละแท็บแล้วค่อยกดบันทึก</p>' +
         '<div class="form-grid" style="max-width:640px">' +
         '<label class="f">ราคาประเมินในไฟล์ ให้เป็นของปีงบ<input type="number" id="imp-fy" value="' + currentFiscalYear() + '" min="2560" max="2700"></label>' +
-        '<label class="f">ถ้ารหัสซ้ำกับที่มีอยู่<select id="imp-mode"><option value="skip">ข้าม (เก็บของเดิม)</option><option value="replace">ใช้ข้อมูลจากไฟล์ทับ</option></select></label>' +
+        '<label class="f">ถ้ารหัสซ้ำกับที่มีอยู่<select id="imp-mode"><option value="skip">ข้าม (เก็บของเดิม)</option><option value="replace">ใช้ข้อมูลจากไฟล์ทับ</option><option value="all">แทนที่ทั้งชุด (ลบรายการที่ไม่มีในไฟล์)</option></select></label>' +
         '<label class="f full">เลือกไฟล์ JSON<input type="file" id="imp-file" accept=".json,application/json"></label>' +
         '</div><div id="imp-result" class="meta" style="margin-top:10px"></div>';
     }
@@ -1121,6 +1122,13 @@
     };
   }
   function mergeInto(docId, incoming, keyName, mode, extra, label) {
+    if (mode === 'all') {
+      const inFile = new Set(incoming.map(function (x) { return x[keyName]; }));
+      const before = items(docId);
+      const removed = before.filter(function (x) { return !inFile.has(x[keyName]); }).length;
+      draft(docId, clone(incoming), 'นำเข้า' + label + ' แทนที่ทั้งชุด: ' + incoming.length + ' รายการ' + (removed ? ' (ลบที่ไม่มีในไฟล์ ' + removed + ')' : ''), extra);
+      return label + ': แทนที่ทั้งชุด ' + incoming.length + ' รายการ' + (removed ? ' · ลบที่ไม่มีในไฟล์ ' + removed : '');
+    }
     const list = clone(items(docId));
     const idx = {};
     list.forEach(function (x, i) { idx[x[keyName]] = i; });
