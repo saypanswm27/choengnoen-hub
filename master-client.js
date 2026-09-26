@@ -88,6 +88,9 @@
   M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchDoc('assets_' + M.fiscalYear())]).then(function () { return M; });
   M.onChange = function (cb) { listeners.push(cb); };
   M.version = function (docId) { return docs[docId] ? docs[docId].version : 0; };
+  M.updatedAt = function (docId) { return docs[docId] ? (docs[docId].updatedAt || '') : ''; };
+  // ลิงก์หน้าแก้ไขข้อมูลกลาง (ใช้ทำปุ่ม "แก้ไขที่ฐานข้อมูลกลาง" ในระบบงาน)
+  M.EDIT_URL = 'https://choengnoen.github.io/choengnoen-hub/master-data.html';
 
   /* ---------- สายทาง ---------- */
   M.routes = function () { return list('routes'); };
@@ -176,8 +179,9 @@
       .map(function (k) { return Number(k.slice(7)); }).sort();
   };
   // ราคาของรายการ ณ วันที่ — ถ้าปีงบนั้นยังไม่มีราคา (หรือยังไม่ได้โหลด) ใช้ปีงบล่าสุดก่อนหน้าที่มี
-  M.priceOn = function (key, date) {
-    const fy = M.fiscalYear(date) || M.fiscalYear();
+  M.priceOn = function (key, date) { return M.priceInYear(key, M.fiscalYear(date) || M.fiscalYear()); };
+  // ราคาของรายการในปีงบ (พ.ศ.) — ต้อง loadAssets(ปีนั้น) ไว้ก่อน ไม่งั้นใช้ปีก่อนหน้าที่โหลดแล้ว / ไม่มีเลยคืน null
+  M.priceInYear = function (key, fy) {
     const years = M.fiscalYearsLoaded().filter(function (y) { return y <= fy; }).reverse();
     for (let i = 0; i < years.length; i++) {
       const a = list('assets_' + years[i]).find(function (x) { return x.key === key; });
