@@ -213,11 +213,27 @@
        master/assets_<ปีงบ> { version, updatedAt, fiscalYear, items: [ราคากลางทรัพย์สิน] }
        master_history/{id}  { docId, fromVersion, toVersion, summary, before (JSON), at }
      ========================================================================== */
+  // Firestore เก็บ "รายการซ้อนในรายการ" ไม่ได้ ช่วง กม. ของสายทาง [[เริ่ม, สิ้นสุด], ...] จึงเก็บเป็น [{from, to}, ...]
+  // หน้าเว็บและ master-client.js ใช้รูปแบบ [[เริ่ม, สิ้นสุด]] เหมือนเดิม — แปลงที่นี่ที่เดียว
+  function encodeItems(items) {
+    return (items || []).map(function (x) {
+      if (!x || !Array.isArray(x.kmRanges)) return x;
+      return Object.assign({}, x, { kmRanges: x.kmRanges.map(function (p) { return Array.isArray(p) ? { from: p[0], to: p[1] } : p; }) });
+    });
+  }
+  function decodeItems(items) {
+    return (items || []).map(function (x) {
+      if (!x || !Array.isArray(x.kmRanges)) return x;
+      return Object.assign({}, x, { kmRanges: x.kmRanges.map(function (p) { return Array.isArray(p) ? p : [p.from, p.to]; }) });
+    });
+  }
+  FBL.decodeMasterItems = decodeItems;
+
   // cb(ข้อมูล) เมื่ออ่านสำเร็จ / onFail(ข้อความ) เมื่ออ่านไม่ได้ (เช่น ยังไม่ได้วาง firestore.rules ชุดใหม่)
   FBL.watchMaster = function (cb, onFail) {
     return db.collection('master').onSnapshot(function (snap) {
       const out = {};
-      snap.docs.forEach(function (d) { out[d.id] = d.data(); });
+      snap.docs.forEach(function (d) { const v = d.data(); v.items = decodeItems(v.items); out[d.id] = v; });
       cb(out);
     }, function (err) {
       console.error('watch master failed', err);
@@ -238,12 +254,12 @@
         if ((expectVersion || 0) !== curVersion) {
           throw new Error('ข้อมูลชุดนี้ถูกแก้ไขจากที่อื่นระหว่างที่คุณกำลังแก้ (รุ่น ' + curVersion + ') กรุณาโหลดหน้าใหม่แล้วแก้อีกครั้ง');
         }
-        const data = Object.assign({}, extra || {}, { items: items, version: curVersion + 1, updatedAt: nowIso() });
+        const data = Object.assign({}, extra || {}, { items: encodeItems(items), version: curVersion + 1, updatedAt: nowIso() });
         tx.set(ref, data);
         tx.set(histRef, {
           docId: docId, fromVersion: curVersion, toVersion: curVersion + 1,
           summary: String(summary || '').slice(0, 2000),
-          before: cur.exists ? JSON.stringify(cur.data().items || []) : '[]',
+          before: cur.exists ? JSON.stringify(decodeItems(cur.data().items)) : '[]',
           at: nowIso()
         });
         return curVersion + 1;

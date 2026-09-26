@@ -66,6 +66,13 @@
       let first = true;
       db.collection('master').doc(docId).onSnapshot(function (snap) {
         docs[docId] = snap.exists ? snap.data() : null;
+        // ช่วง กม. เก็บใน Firestore เป็น [{from, to}] (Firestore ไม่รับรายการซ้อน) แปลงกลับเป็น [[เริ่ม, สิ้นสุด]]
+        if (docs[docId] && Array.isArray(docs[docId].items)) {
+          docs[docId].items = docs[docId].items.map(function (x) {
+            if (!x || !Array.isArray(x.kmRanges)) return x;
+            return Object.assign({}, x, { kmRanges: x.kmRanges.map(function (p) { return Array.isArray(p) ? p : [p.from, p.to]; }) });
+          });
+        }
         if (first) { first = false; resolve(docs[docId]); return; }
         listeners.forEach(function (cb) { try { cb(docId, docs[docId]); } catch (e) { console.error(e); } });
       }, function (err) {
