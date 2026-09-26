@@ -184,6 +184,18 @@
     await db.collection(col).doc(id).delete();
   };
 
+  // เรียงลำดับการ์ดใหม่ตามรายการ id ที่ส่งมา (ลากวางบนหน้าเว็บ)
+  // ให้เลข order ใหม่ 10, 20, 30… แล้วบันทึกพร้อมกันทุกใบในคำสั่งเดียว — ไม่สำเร็จจะไม่มีใบไหนเปลี่ยน
+  FBL.reorderSites = async function (col, ids) {
+    try {
+      const batch = db.batch();
+      ids.forEach(function (id, i) {
+        batch.update(db.collection(col).doc(id), { order: (i + 1) * 10 });
+      });
+      await batch.commit();
+    } catch (e) { throw new Error(thErr(e)); }
+  };
+
   /* ---------- ตั้งค่าหัวเว็บ (settings/hero) — ทุกคนเห็น, เปลี่ยนได้เฉพาะเจ้าของ ---------- */
   // cb({ image, imagePos, logo, title, subtitle }) — image/logo เป็น data URL ของรูปที่ย่อแล้ว, '' หรือไม่มี = ใช้ค่าเริ่มต้น
   // imagePos = ตำแหน่งรูปพื้นหลัง เช่น "50% 30%"

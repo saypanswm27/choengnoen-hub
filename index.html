@@ -294,6 +294,39 @@
   }
   .card:hover .card-icon { transform: rotate(-5deg) scale(1.06); }
 
+  /* ที่จับสำหรับลากย้ายการ์ด (เห็นเฉพาะผู้จัดการ) — ต้องกดที่นี่เท่านั้นถึงจะลากได้ */
+  .card { position: relative; }
+  .drag-handle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #A7AEBD;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .drag-handle:hover { background: var(--sand); color: var(--ink); }
+  .card.has-handle .card-top { padding-right: 26px; }
+  /* การ์ดที่กำลังลาก: ลอยตามนิ้ว/เมาส์ ไม่มีแอนิเมชันหน่วง */
+  .card.dragging {
+    z-index: 50;
+    transition: none;
+    box-shadow: 0 18px 40px rgba(22,35,63,0.28);
+    opacity: 0.95;
+    pointer-events: none;
+  }
+  .card.dragging .drag-handle { cursor: grabbing; }
+  body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+  body.is-dragging .card:not(.dragging) { transform: none; }
+
   .card-top {
     display: flex;
     align-items: flex-start;
@@ -1262,6 +1295,8 @@
 
   /* ---------- Render cards ---------- */
   function renderCategories() {
+    // ระหว่างลากการ์ด ห้ามวาดใหม่ (ไม่งั้นการ์ดจะเด้งกลับที่เดิม) — วาดทีหลังตอนปล่อย
+    if (cardDrag) { cardDrag.pendingRender = true; return; }
     categoriesEl.innerHTML = '';
     const allIds = ['section'].concat(isOwner ? ['personal'] : []);
     const catsToShow = activeCategory === 'all' ? allIds : allIds.filter(function (id) { return id === activeCategory; });
@@ -1320,11 +1355,22 @@
             '</div>';
           if (isOwner) card.querySelector('.btn-copy').addEventListener('click', function (e) { copyLink(site.url, e.currentTarget); });
           if (isOwner) card.querySelector('.btn-edit').addEventListener('click', function () { openSiteModal(catId, site); });
+          card.dataset.id = site.__id;
+          if (isOwner) {
+            const handle = document.createElement('span');
+            handle.className = 'drag-handle';
+            handle.title = 'ลากเพื่อย้ายการ์ด';
+            handle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.7"></circle><circle cx="15" cy="5" r="1.7"></circle><circle cx="9" cy="12" r="1.7"></circle><circle cx="15" cy="12" r="1.7"></circle><circle cx="9" cy="19" r="1.7"></circle><circle cx="15" cy="19" r="1.7"></circle></svg>';
+            handle.addEventListener('pointerdown', function (e) { startCardDrag(e, card, grid, cat.col); });
+            card.classList.add('has-handle');
+            card.appendChild(handle);
+          }
           grid.appendChild(card);
           if (site.rowBreakAfter) {
             const rowBreak = document.createElement('div');
             rowBreak.className = 'row-break';
             grid.appendChild(rowBreak);
+            card.rowBreakEl = rowBreak; // ตัวดันบรรทัดย้ายตามการ์ดไปด้วยตอนลาก
           }
         });
         if (isOwner) {
@@ -1343,6 +1389,99 @@
   }
 
   function renderAll() { renderTabs(); renderCategories(); }
+
+  /* ---------- ลากวางเพื่อย้ายการ์ด (ผู้จัดการเท่านั้น) ----------
+     กดค้างที่ที่จับ ⋮⋮ แล้วลาก: การ์ดลอยตามนิ้ว/เมาส์ และสลับที่กับการ์ดที่ชี้อยู่ทันที
+     ปล่อยแล้วค่อยบันทึกลำดับใหม่ทั้งหมวดลง Firebase ครั้งเดียว — ย้ายได้เฉพาะในหมวดเดียวกัน */
+  let cardDrag = null;
+
+  function startCardDrag(e, card, grid, col) {
+    if (cardDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault();
+    const r = card.getBoundingClientRect();
+    cardDrag = {
+      card: card, grid: grid, col: col,
+      offX: e.clientX - r.left, offY: e.clientY - r.top,
+      before: cardIds(grid), pendingRender: false
+    };
+    card.classList.add('dragging');
+    document.body.classList.add('is-dragging');
+    window.addEventListener('pointermove', moveCardDrag);
+    window.addEventListener('pointerup', endCardDrag);
+    window.addEventListener('pointercancel', cancelCardDrag);
+  }
+
+  function cardIds(grid) {
+    return Array.prototype.map.call(grid.querySelectorAll('.card'), function (c) { return c.dataset.id; });
+  }
+
+  // วางการ์ดให้ตรงกับตำแหน่งนิ้ว/เมาส์ (คิดจากที่อยู่จริงในตาราง ณ ตอนนี้)
+  function placeDraggedCard(x, y) {
+    const card = cardDrag.card;
+    card.style.transform = '';
+    const r = card.getBoundingClientRect();
+    card.style.transform = 'translate(' + (x - cardDrag.offX - r.left) + 'px,' + (y - cardDrag.offY - r.top) + 'px)';
+  }
+
+  function moveCardDrag(e) {
+    if (!cardDrag) return;
+    const d = cardDrag;
+    // หาการ์ดใบที่นิ้ว/เมาส์ชี้อยู่ แล้วย้ายการ์ดที่ลากไปไว้ตรงนั้น
+    const target = Array.prototype.find.call(d.grid.querySelectorAll('.card'), function (c) {
+      if (c === d.card) return false;
+      const r = c.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    if (target) {
+      const cards = Array.prototype.slice.call(d.grid.querySelectorAll('.card'));
+      if (cards.indexOf(d.card) < cards.indexOf(target)) {
+        const after = target.rowBreakEl || target;
+        d.grid.insertBefore(d.card, after.nextSibling);
+      } else {
+        d.grid.insertBefore(d.card, target);
+      }
+      if (d.card.rowBreakEl) d.grid.insertBefore(d.card.rowBreakEl, d.card.nextSibling);
+    }
+    placeDraggedCard(e.clientX, e.clientY);
+    // ลากไปใกล้ขอบจอบน/ล่าง ให้หน้าเลื่อนตาม
+    const edge = 60;
+    if (e.clientY < edge) window.scrollBy(0, -12);
+    else if (e.clientY > window.innerHeight - edge) window.scrollBy(0, 12);
+  }
+
+  function finishCardDrag() {
+    const d = cardDrag;
+    window.removeEventListener('pointermove', moveCardDrag);
+    window.removeEventListener('pointerup', endCardDrag);
+    window.removeEventListener('pointercancel', cancelCardDrag);
+    d.card.classList.remove('dragging');
+    d.card.style.transform = '';
+    document.body.classList.remove('is-dragging');
+    cardDrag = null;
+    return d;
+  }
+
+  async function endCardDrag() {
+    if (!cardDrag) return;
+    const d = finishCardDrag();
+    const ids = cardIds(d.grid);
+    if (ids.join('|') === d.before.join('|')) {
+      if (d.pendingRender) renderCategories();
+      return;
+    }
+    try {
+      await FBL.reorderSites(d.col, ids);
+    } catch (err) {
+      alert('บันทึกลำดับการ์ดไม่สำเร็จ: ' + (err.message || err));
+      renderCategories(); // คืนการ์ดกลับตำแหน่งเดิม
+    }
+  }
+
+  function cancelCardDrag() {
+    if (!cardDrag) return;
+    finishCardDrag();
+    renderCategories(); // ถูกขัดจังหวะ (เช่น มีสายเข้า) — คืนตำแหน่งเดิม
+  }
 
   /* ---------- เริ่มระบบ ---------- */
   if (!window.FBL || !FBL.configured) {
