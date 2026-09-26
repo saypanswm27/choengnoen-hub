@@ -256,12 +256,13 @@
     S.drafts[docId] = d;
     render();
   }
-  function changedIds(docId, key) {
-    // รายการที่ต่างจากฐานข้อมูล (ใช้ไฮไลต์แถว)
+  function changedIds(docId, key, baseDocId) {
+    // รายการที่ต่างจากฐานข้อมูล (ใช้ไฮไลต์แถว) — baseDocId: เทียบกับเอกสารอื่น (ราคาปีงบใหม่เทียบกับปีที่คัดลอกมา)
     const out = new Set();
     if (!S.drafts[docId]) return out;
     const base = {};
-    ((S.master[docId] && S.master[docId].items) || []).forEach(function (x) { base[x[key]] = sameKey(x); });
+    const b = S.master[baseDocId || docId];
+    ((b && b.items) || []).forEach(function (x) { base[x[key]] = sameKey(x); });
     S.drafts[docId].items.forEach(function (x) { if (base[x[key]] !== sameKey(x)) out.add(x[key]); });
     return out;
   }
@@ -300,36 +301,12 @@
     if (!FBL.configured) h += '<div class="banner err">ยังไม่ได้ตั้งค่า Firebase ในไฟล์ <code>firebase-layer.js</code></div>';
     if (S.loadError) h += '<div class="banner err">' + esc(S.loadError) + '</div>';
     else if (!S.owner) h += '<div class="banner info">โหมดดูอย่างเดียว ข้อมูลในหน้านี้คือข้อมูลที่ทุกระบบงานใช้อยู่ ถ้าต้องการแก้ไข ให้กด "เข้าสู่ระบบเจ้าของ"</div>';
-    if (S.loaded && !S.loadError) h += fyBanner();
     $('banners').innerHTML = h;
     $('btn-login').textContent = S.owner ? 'ออกจากระบบ' : 'เข้าสู่ระบบเจ้าของ';
     $('who').textContent = S.owner ? 'เจ้าของเว็บ (แก้ไขได้)' : '';
   }
 
-  // เตือนเรื่องราคาประเมินปีงบใหม่ทุกปี: ก่อนขึ้นปีงบ FY_WARN_DAYS วัน (ถ้ายังไม่ได้สร้าง) และหลังขึ้นปีงบแล้วแต่ยังไม่มีราคา
-  const FY_WARN_DAYS = 60;
   function savedAssets(fy) { const m = S.master[assetDocId(fy)]; return !!(m && m.items && m.items.length); }
-  function fyBanner() {
-    const cur = currentFiscalYear(), next = cur + 1;
-    const start = new Date(next - 544, 9, 1); // 1 ต.ค. ที่เริ่มปีงบถัดไป
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const days = Math.round((start - today) / 86400000);
-    let fy, cls, msg;
-    if (!savedAssets(cur)) {
-      const prev = fiscalYears().filter(function (y) { return y < cur && savedAssets(y); })[0];
-      fy = cur; cls = 'err';
-      msg = '<b>ขึ้นปีงบ ' + cur + ' แล้ว แต่ยังไม่มีราคาประเมินของปีนี้</b> ' +
-        (prev ? 'ระบบงานกำลังใช้ราคาปีงบ ' + prev + ' ไปก่อน' : 'ระบบงานยังไม่มีราคาจากฐานข้อมูลกลางให้ใช้');
-    } else if (days <= FY_WARN_DAYS && !savedAssets(next)) {
-      fy = next; cls = 'warn';
-      msg = '<b>อีก ' + days + ' วันจะขึ้นปีงบ ' + next + '</b> (1 ต.ค. ' + (next - 1) + ') ยังไม่ได้สร้างราคาประเมินของปีงบ ' + next +
-        ' สร้างล่วงหน้าได้เลย ระบบงานจะเริ่มใช้ราคาใหม่เองตั้งแต่ 1 ต.ค.';
-    } else return '';
-    if (S.drafts[assetDocId(fy)]) msg += ' — <b>สร้างเป็นฉบับร่างแล้ว อย่าลืมกด "บันทึกลงฐานข้อมูลกลาง"</b>';
-    else if (S.owner) msg += ' <button class="btn sm" type="button" data-act="fy-new" data-id="' + fy + '">สร้างปีงบ ' + fy + '</button>';
-    else msg += ' (แจ้งเจ้าของเว็บให้เข้าสู่ระบบแล้วสร้าง)';
-    return '<div class="banner ' + cls + '">' + msg + '</div>';
-  }
 
   function renderTabs() {
     $('tabs').innerHTML = TABS.map(function (t) {
@@ -714,41 +691,60 @@
   }
 
   /* ----- ราคาประเมินทรัพย์สิน ----- */
+  // ราคาของปีงบ fy = ราคาที่บันทึกในปีนั้น หรือถ้าปีนั้นไม่มีการแก้ราคา ใช้ปีงบล่าสุดก่อนหน้าที่มีราคา
+  function assetYearUsed(fy) { return fiscalYears().filter(function (y) { return y <= fy && items(assetDocId(y)).length; })[0] || null; }
+  function assetView(fy) { const y = assetYearUsed(fy); return y ? items(assetDocId(y)) : []; }
+  // แก้ราคาได้เฉพาะปีงบปัจจุบัน: แก้หลัง 1 ต.ค. = ปรับราคาของปีงบใหม่ ระบบคัดลอกราคาล่าสุดมาเป็นปีงบใหม่ให้เอง
+  // ราคาของปีงบที่ผ่านมาคงเดิม เคสเก่ายังใช้ราคาเดิม
+  function editAssets(change, msg) {
+    const fy = currentFiscalYear(), docId = assetDocId(fy);
+    const src = assetYearUsed(fy);
+    const list = clone(assetView(fy));
+    change(list);
+    S.fy = fy;
+    draft(docId, list, (src && src !== fy ? 'เริ่มราคาปีงบ ' + fy + ' จากราคาปีงบ ' + src + ' / ' : '') + msg, { fiscalYear: fy });
+  }
+
   function renderAssets(v) {
-    const docId = assetDocId(S.fy);
-    const all = items(docId);
+    const cur = currentFiscalYear();
+    const usedFy = assetYearUsed(S.fy);
+    const docId = assetDocId(usedFy || S.fy);
+    const all = usedFy ? items(docId) : [];
+    const editable = S.owner && S.fy === cur;
     const q = S.assetSearch.trim().toLowerCase();
     const list = all.filter(function (a) {
       if (S.assetCat !== '*' && (a.category || '') !== S.assetCat) return false;
       return !q || (a.name + ' ' + a.key).toLowerCase().indexOf(q) >= 0;
     });
-    const changed = changedIds(docId, 'key');
+    // ราคาปีงบใหม่ที่ยังไม่เคยบันทึก เทียบกับปีงบล่าสุดที่บันทึกไว้ (ไฮไลต์เฉพาะรายการที่แก้จริง)
+    const savedBefore = fiscalYears().filter(function (y) { return y < (usedFy || S.fy) && savedAssets(y); })[0];
+    const changed = changedIds(docId, 'key', S.master[docId] || !savedBefore ? null : assetDocId(savedBefore));
     const years = fiscalYears();
     let h = '<div class="panel"><div class="toolbar">' +
       '<label>ปีงบประมาณ <select id="fy-select" style="width:auto">' + years.map(function (y) {
-        return '<option value="' + y + '"' + (y === S.fy ? ' selected' : '') + '>' + y + (y === currentFiscalYear() ? ' (ปัจจุบัน)' : '') + '</option>';
+        return '<option value="' + y + '"' + (y === S.fy ? ' selected' : '') + '>' + y + (y === cur ? ' (ปัจจุบัน)' : '') + '</option>';
       }).join('') + '</select></label>' +
       '<div class="grow"><input type="search" id="asset-search" placeholder="ค้นหาชื่อหรือรหัส…" value="' + esc(S.assetSearch) + '"></div>' +
       '<select id="asset-cat" style="width:auto"><option value="*">ทุกหมวด</option>' + CATEGORIES.map(function (c) {
         return '<option value="' + c.key + '"' + (S.assetCat === c.key ? ' selected' : '') + '>' + esc(c.label) + '</option>';
       }).join('') + '</select>';
-    if (S.owner) {
-      h += '<button class="btn" type="button" data-act="fy-new">+ สร้างปีงบใหม่</button>';
-      h += '<button class="btn primary" type="button" data-act="asset-add">+ เพิ่มรายการ</button>';
-    }
+    if (editable) h += '<button class="btn primary" type="button" data-act="asset-add">+ เพิ่มรายการ</button>';
     h += '</div><p class="meta">' + esc(docMeta(docId)) + ' · ทั้งหมด ' + all.length + ' รายการ' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
-    if (!all.length) h += '<div class="empty">ยังไม่มีราคาประเมินของปีงบ ' + S.fy + (S.owner ? ' กด "สร้างปีงบใหม่" เพื่อคัดลอกจากปีก่อน หรือนำเข้าที่แท็บ "นำเข้า / ส่งออก"' : '') + '</div>';
+    if (usedFy && usedFy !== S.fy) h += '<div class="banner info">ปีงบ ' + S.fy + ' ยังไม่มีการแก้ราคา ระบบงานใช้ราคาล่าสุดจากปีงบ ' + usedFy +
+      (editable ? ' — แก้ราคารายการใด ระบบจะบันทึกเป็นราคาของปีงบ ' + S.fy + ' ให้เอง (ราคาปีงบ ' + usedFy + ' คงเดิม)' : '') + '</div>';
+    if (S.owner && S.fy < cur) h += '<div class="banner info">ปีงบที่ผ่านมาแล้ว ดูได้อย่างเดียว — การแก้ราคาตอนนี้จะเป็นราคาของปีงบ ' + cur + ' (เลือกปีงบ ' + cur + ' เพื่อแก้)</div>';
+    if (!all.length) h += '<div class="empty">ยังไม่มีราคาประเมินในฐานข้อมูลกลาง' + (S.owner ? ' นำเข้าที่แท็บ "นำเข้า / ส่งออก" หรือกด "+ เพิ่มรายการ"' : '') + '</div>';
     else {
       h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>รหัส</th><th>รายการ</th><th>หน่วย</th><th class="num">ราคา (บาท)</th><th>หมวด</th><th>ใช้บ่อย</th>' +
-        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+        (editable ? '<th></th>' : '') + '</tr></thead><tbody>';
       list.forEach(function (a) {
         const cls = [changed.has(a.key) ? 'changed' : '', a.hidden ? 'muted' : ''].join(' ');
         h += '<tr class="' + cls + '"><td>' + esc(a.key) + '</td><td>' + esc(a.name) + (a.hidden ? ' <span class="pill off">ซ่อน</span>' : '') + '</td><td>' + esc(a.unit) + '</td>' +
           '<td class="num">' + fmtNum(a.price, 2) + '</td><td>' + esc(catLabel(a.category)) + '</td><td>' + (a.frequent ? '★' : '') + '</td>' +
-          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="asset-edit" data-id="' + esc(a.key) + '">แก้ไข</button></td>' : '') + '</tr>';
+          (editable ? '<td class="row-actions"><button class="btn sm" type="button" data-act="asset-edit" data-id="' + esc(a.key) + '">แก้ไข</button></td>' : '') + '</tr>';
       });
       h += '</tbody></table></div>';
-      h += '<p class="hint" style="margin-top:8px">ราคาแยกตามปีงบประมาณ (เริ่ม 1 ต.ค.) ระบบงานจะใช้ราคาของปีงบตามวันที่เกิดเหตุ ถ้าเลิกใช้รายการใด ให้ติ๊ก "ซ่อน" แทนการลบ เพื่อให้เคสเก่ายังอ้างถึงได้</p>';
+      h += '<p class="hint" style="margin-top:8px">ราคาแยกตามปีงบประมาณ (เริ่ม 1 ต.ค.) แก้ราคาเมื่อไร ก็เป็นราคาของปีงบในวันที่แก้ ปีงบที่ไม่ได้แก้ใช้ราคาล่าสุดต่อไปเอง ระบบงานใช้ราคาของปีงบตามวันที่เกิดเหตุ ถ้าเลิกใช้รายการใด ให้ติ๊ก "ซ่อน" แทนการลบ เพื่อให้เคสเก่ายังอ้างถึงได้</p>';
     }
     v.innerHTML = h + '</div>';
   }
@@ -763,9 +759,9 @@
 
   function assetForm(a) {
     const isNew = !a;
-    const docId = assetDocId(S.fy);
+    const fy = currentFiscalYear();
     a = a || { key: nextAssetKey(), category: '', frequent: false, hidden: false };
-    openModal((isNew ? 'เพิ่มรายการราคาประเมิน' : 'แก้ไขราคาประเมิน') + ' ปีงบ ' + S.fy,
+    openModal((isNew ? 'เพิ่มรายการราคาประเมิน' : 'แก้ไขราคาประเมิน') + ' ปีงบ ' + fy,
       '<div class="form-grid">' +
       field('key', 'รหัส', a.key, 'text', 'readonly') +
       '<label class="f">หมวด<select name="category">' + CATEGORIES.map(function (c) { return '<option value="' + c.key + '"' + (c.key === (a.category || '') ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') + '</select></label>' +
@@ -774,38 +770,16 @@
       field('price', 'ราคา (บาท) *', a.price, 'number', 'step="0.01" min="0"') +
       '<label class="chk"><input type="checkbox" name="frequent"' + (a.frequent ? ' checked' : '') + '> ใช้บ่อย (แสดงก่อน)</label>' +
       '<label class="chk"><input type="checkbox" name="hidden"' + (a.hidden ? ' checked' : '') + '> ซ่อน (เลิกใช้)</label>' +
-      '</div><p class="hint">รหัสใช้อ้างอิงรายการเดียวกันทุกปีงบ แก้ราคาที่นี่จะมีผลเฉพาะปีงบ ' + S.fy + '</p>',
+      '</div><p class="hint">รหัสใช้อ้างอิงรายการเดียวกันทุกปีงบ ราคาที่แก้ตอนนี้เป็นราคาของปีงบ ' + fy + ' (ตั้งแต่ 1 ต.ค. ' + (fy - 1) + ') ราคาปีงบก่อนหน้าคงเดิม</p>',
       function (f) {
         const o = { key: a.key, name: f.name.trim(), unit: f.unit.trim(), price: num(f.price), category: f.category, frequent: !!f.frequent, hidden: !!f.hidden };
         if (!o.name || !o.unit || o.price == null || o.price < 0) return 'กรุณาใส่ชื่อ หน่วย และราคาให้ครบ';
-        const list = items(docId).slice();
-        if (isNew) list.push(o); else list[list.findIndex(function (x) { return x.key === a.key; })] = o;
         let msg = (isNew ? 'เพิ่ม ' : 'แก้ไข ') + o.key + ' ' + o.name.slice(0, 40);
         if (!isNew && a.price !== o.price) msg += ' (ราคา ' + fmtNum(a.price, 2) + ' → ' + fmtNum(o.price, 2) + ')';
-        draft(docId, list, msg, { fiscalYear: S.fy });
-      });
-  }
-
-  function newFiscalYearForm(target) {
-    const years = fiscalYears();
-    const withData = years.filter(function (y) { return items(assetDocId(y)).length; });
-    const suggest = target || Math.max.apply(null, years) + (items(assetDocId(Math.max.apply(null, years))).length ? 1 : 0);
-    openModal('สร้างราคาประเมินปีงบใหม่',
-      '<div class="form-grid">' +
-      field('fy', 'ปีงบประมาณใหม่ (พ.ศ.)', suggest, 'number', 'min="2560" max="2700"') +
-      '<label class="f">คัดลอกรายการและราคาจากปี<select name="from"><option value="">ไม่คัดลอก (เริ่มว่าง)</option>' +
-        withData.map(function (y) { return '<option value="' + y + '"' + (y === withData[0] ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label>' +
-      field('pct', 'ปรับราคาทุกรายการ (%)', 0, 'number', 'step="0.1"') +
-      '</div><p class="hint">คัดลอกแล้วค่อยแก้ราคารายการที่เปลี่ยนได้ ราคาปีเก่ายังอยู่ครบ ไม่ถูกแก้</p>',
-      function (f) {
-        const fy = Number(f.fy);
-        if (!(fy >= 2560 && fy <= 2700)) return 'ปีงบประมาณไม่ถูกต้อง';
-        if (items(assetDocId(fy)).length) return 'ปีงบ ' + fy + ' มีข้อมูลอยู่แล้ว';
-        const pct = num(f.pct) || 0;
-        const src = f.from ? clone(items(assetDocId(Number(f.from)))) : [];
-        src.forEach(function (a) { if (pct) a.price = Math.round(a.price * (1 + pct / 100) * 100) / 100; });
-        S.fy = fy;
-        draft(assetDocId(fy), src, 'สร้างปีงบ ' + fy + (f.from ? ' คัดลอกจากปี ' + f.from + ' (' + src.length + ' รายการ' + (pct ? ', ปรับราคา ' + pct + '%' : '') + ')' : ' (ว่าง)'), { fiscalYear: fy });
+        editAssets(function (list) {
+          const i = list.findIndex(function (x) { return x.key === a.key; });
+          if (i < 0) list.push(o); else list[i] = o;
+        }, msg);
       });
   }
 
@@ -1055,9 +1029,7 @@
         break;
       }
       case 'asset-add': assetForm(null); break;
-      case 'asset-edit': assetForm(items(assetDocId(S.fy)).find(function (x) { return x.key === id; })); break;
-      case 'fy-new': if (S.tab !== 'assets') { S.tab = 'assets'; render(); } newFiscalYearForm(id ? Number(id) : null); break;
-      case 'export': doExport(); break;
+      case 'asset-edit': assetForm(assetView(currentFiscalYear()).find(function (x) { return x.key === id; })); break;      case 'export': doExport(); break;
       case 'hist-reload': S.history = null; render(); break;
       case 'hist-restore': {
         const x = S.history.find(function (h) { return h.__id === id; });

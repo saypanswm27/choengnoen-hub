@@ -14,8 +14,8 @@
      CNMaster.clearanceToBoundary('3', 230500)   // ระยะจากขอบไหล่ทางถึงแนวเขตทาง ซ้าย/ขวา (ม.)
      await CNMaster.loadAssets(2568)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันและปีก่อนโหลดให้อัตโนมัติ)
      CNMaster.assets(2569)                       // รายการราคาประเมินของปีงบ (ไม่ระบุปี = ชุดที่ใช้อยู่ ดู assetsYear)
-     CNMaster.assetsYear()                       // ปีงบของราคาที่ใช้อยู่ — ถ้ายังไม่ได้สร้างราคาปีงบใหม่ จะเป็นปีก่อน
-     CNMaster.assetsNotice()                     // ข้อความเตือนเมื่อยังใช้ราคาปีงบเก่า (ไม่ต้องเตือนคืน null)
+     CNMaster.assetsYear()                       // ปีงบของราคาที่ใช้อยู่ = ปีล่าสุดที่มีราคา (ปีที่ไม่ได้ปรับราคาใช้ราคาล่าสุดต่อ)
+     CNMaster.assetsNotice()                     // "ปีงบนี้ไม่มีการปรับราคา ใช้ราคาจากปีงบ …" (ปีนี้มีราคาเอง คืน null)
      CNMaster.priceOn('mat-002', '2026-03-15')   // ราคาของรายการ ณ วันที่ (ใช้ปีงบของวันนั้น)
      CNMaster.onChange(function (what) { ... })  // เรียกเมื่อเจ้าของแก้ข้อมูลกลาง what = 'routes' | 'zones' | 'assets_2569' ...
      CNMaster.adminRoutes()                      // สายทางในรูปแบบของระบบบริหารหมวด (routeNo, ranges เป็นกิโลเมตร)
@@ -90,8 +90,17 @@
     listeners.forEach(function (cb) { try { cb(docId, docs[docId]); } catch (e) { console.error(e); } });
   }
 
-  // ราคาประเมิน: โหลดปีงบปัจจุบัน + ปีก่อน (ใช้แทนช่วงต้นปีงบที่ยังไม่ได้สร้างราคาปีใหม่ และเคสย้อนหลัง)
-  function watchAssetYears(fy) { return Promise.all([watchDoc('assets_' + fy), watchDoc('assets_' + (fy - 1))]); }
+  // ราคาประเมิน: ปีงบที่ไม่ได้ปรับราคาไม่ต้องสร้างใหม่ ระบบใช้ราคาล่าสุดต่อไปเรื่อย ๆ
+  // จึงโหลดปีงบปัจจุบัน + ปีก่อน (เคสย้อนหลัง) + ปีงบล่าสุดที่มีราคา (อาจย้อนไปหลายปี)
+  function watchBackTo(y) { // ถอยทีละปีจนเจอปีที่มีราคา
+    if (y < 2560) return null;
+    return watchDoc('assets_' + y).then(function () { return list('assets_' + y).length ? null : watchBackTo(y - 1); });
+  }
+  function watchAssetYears(fy) {
+    return Promise.all([watchDoc('assets_' + fy), watchDoc('assets_' + (fy - 1))]).then(function () {
+      if (!list('assets_' + fy).length && !list('assets_' + (fy - 1)).length) return watchBackTo(fy - 2);
+    });
+  }
   let watchedFy = M.fiscalYear();
   M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchAssetYears(watchedFy)]).then(function () { return M; });
   // เปิดหน้าค้างข้าม 1 ต.ค. → เริ่มอ่านราคาปีงบใหม่ แล้วแจ้งระบบงานให้ใช้ราคาชุดใหม่ (ไม่ต้องรีเฟรช)
@@ -196,17 +205,17 @@
     return Object.keys(docs).filter(function (k) { return /^assets_\d{4}$/.test(k) && docs[k]; })
       .map(function (k) { return Number(k.slice(7)); }).sort(function (a, b) { return a - b; });
   };
-  // ปีงบของราคาที่ใช้อยู่จริง: ปีงบปัจจุบัน หรือถ้ายังไม่ได้สร้างราคาปีนี้ ใช้ปีล่าสุดก่อนหน้าที่มีราคา
+  // ปีงบของราคาที่ใช้อยู่จริง: ปีงบล่าสุด (≤ ปีปัจจุบัน) ที่มีราคา — ปีที่ไม่ได้ปรับราคาใช้ราคาล่าสุดต่อ
   M.assetsYear = function () {
     const fy = M.fiscalYear();
     const years = M.fiscalYearsLoaded().filter(function (y) { return y <= fy && list('assets_' + y).length; });
     return years.length ? years[years.length - 1] : fy;
   };
-  // ข้อความเตือนเมื่อยังใช้ราคาปีงบเก่าอยู่ (ไม่ต้องเตือนคืน null) — ระบบงานนำไปแสดงได้
+  // ข้อความบอกว่าใช้ราคาจากปีงบไหน เมื่อปีนี้ไม่ได้ปรับราคา (ปีนี้มีราคาเอง/ไม่มีราคาเลย คืน null) — ระบบงานนำไปแสดงได้
   M.assetsNotice = function () {
     const fy = M.fiscalYear(), used = M.assetsYear();
     if (used === fy || !list('assets_' + used).length) return null;
-    return 'ฐานข้อมูลกลางยังไม่มีราคาประเมินปีงบ ' + fy + ' ระบบใช้ราคาปีงบ ' + used + ' ไปก่อน';
+    return 'ปีงบ ' + fy + ' ไม่มีการปรับราคาประเมิน ใช้ราคาล่าสุดจากปีงบ ' + used;
   };
   // ราคาของรายการ ณ วันที่ — ถ้าปีงบนั้นยังไม่มีราคา (หรือยังไม่ได้โหลด) ใช้ปีงบล่าสุดก่อนหน้าที่มี
   M.priceOn = function (key, date) { return M.priceInYear(key, M.fiscalYear(date) || M.fiscalYear()); };
