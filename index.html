@@ -139,36 +139,21 @@
   .btn-owner.active { background: var(--orange); border-color: var(--orange); color: var(--white); }
   .btn-owner.active:hover { background: #D5651E; }
 
+  /* ตัวอย่างหัวเว็บ: สัดส่วนกว้าง:สูงเท่าหัวเว็บจริง (ตั้งใน JS) + cover แบบเดียวกัน
+     ตำแหน่งที่เห็นจึงตรงกับที่แสดงจริง — ใช้ box-shadow แทน border เพื่อไม่ให้พื้นที่รูปเพี้ยน */
   .hero-preview {
     height: 120px;
     border-radius: 12px;
-    border: 1px solid var(--line);
     background: linear-gradient(180deg, #5B9BD5 0%, #8DBCE6 55%, #C7E0F4 100%);
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     margin-bottom: 10px;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+    box-shadow: inset 0 0 0 1px var(--line);
   }
+  .hero-preview.can-drag { cursor: grab; touch-action: none; user-select: none; }
+  .hero-preview.dragging { cursor: grabbing; }
   .preview-label { font-size: 0.8rem; color: var(--ink-light); margin: 0 0 4px; }
-  /* กรอบเลือกส่วนของรูป: แสดงรูปเต็ม + กรอบหัวเว็บให้ลาก ส่วนนอกกรอบจะมืดลง */
-  .crop-stage {
-    position: relative; width: fit-content; max-width: 100%;
-    margin: 0 auto 10px; border-radius: 10px; overflow: hidden;
-    background: #1F2937; touch-action: none; user-select: none; cursor: crosshair;
-  }
-  .crop-stage[hidden] { display: none; }
-  .crop-stage img { display: block; max-width: 100%; max-height: 280px; pointer-events: none; }
-  .crop-frame {
-    position: absolute; left: 0; top: 0;
-    border: 2px solid #FFFFFF; outline: 2px dashed var(--orange); outline-offset: -2px;
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
-    cursor: grab;
-  }
-  .crop-frame span {
-    position: absolute; left: 6px; top: 6px; padding: 2px 8px; border-radius: 6px;
-    background: var(--orange); color: #FFFFFF; font-size: 0.75rem; white-space: nowrap;
-  }
-  .crop-stage.dragging, .crop-stage.dragging .crop-frame { cursor: grabbing; }
   .pos-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.85rem; color: var(--ink-light); }
   .pos-row[hidden] { display: none; }
   .btn-pos {
@@ -748,9 +733,7 @@
     <main>
       <div id="config-banner" class="config-banner" style="display:none;">
         ยังไม่ได้ตั้งค่า Firebase สำหรับเว็บนี้ — เปิดไฟล์ <code>firebase-layer.js</code> แล้วใส่ค่า <code>firebaseConfig</code> จาก Firebase Console ของโปรเจกต์ที่สร้างไว้ (ดูขั้นตอนใน <code>คู่มือติดตั้ง-อ่านก่อน.md</code>)
-      </div>
-      <div id="fy-banner" class="config-banner" style="display:none;"></div>
-      <div class="tabs" id="tabs"></div>
+      </div>      <div class="tabs" id="tabs"></div>
       <div id="categories"></div>
     </main>
   </div>
@@ -777,7 +760,7 @@
   const btnHeroImg = document.getElementById('btn-hero-img');
 
   /* ---------- ตั้งค่าหัวเว็บ: รูปพื้นหลัง, รูปโปรไฟล์, ชื่อเว็บ, ชื่อรอง ---------- */
-  // ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้ตั้งค่า หรือกด "ใช้ค่าเดิม")
+  // ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้ตั้งค่า)
   const HERO_DEFAULTS = {
     image: '',
     logo: 'assets/mascot-logo-badge.png',
@@ -880,9 +863,7 @@
             <div class="logo-row">
               <img class="logo-preview" id="logo-preview" alt="">
               <div class="logo-row-actions">
-                <label class="btn-upload">📷 เลือกรูปใหม่<input type="file" id="logo-file" accept="image/*"></label>
-                <button type="button" class="btn-link" id="logo-reset">ใช้รูปเดิม (น้องช้าง)</button>
-              </div>
+                <label class="btn-upload">📷 เลือกรูปใหม่<input type="file" id="logo-file" accept="image/*"></label>              </div>
             </div>
 
             <div class="modal-sec"><span class="modal-num">2</span> ชื่อเว็บ</div>
@@ -891,22 +872,16 @@
 
             <div class="modal-sec"><span class="modal-num">3</span> รูปพื้นหลังหัวเว็บ</div>
             <div class="modal-field">
-              <div class="crop-stage" id="crop-stage" hidden>
-                <img id="crop-img" alt="">
-                <div class="crop-frame" id="crop-frame"><span>ส่วนที่แสดงบนหัวเว็บ</span></div>
-              </div>
+              <div class="preview-label">ตัวอย่างหัวเว็บ (แสดงตรงกับหัวเว็บจริง)</div>
+              <div class="hero-preview" id="hero-preview"></div>
               <div class="pos-row" id="pos-row">
-                <span>ลากกรอบในรูป หรือกด:</span>
+                <span>ลากรูปในแถบด้านบน หรือกด:</span>
                 <button type="button" class="btn-pos" data-pos-y="0">ชิดบน</button>
                 <button type="button" class="btn-pos" data-pos-y="50">กลาง</button>
                 <button type="button" class="btn-pos" data-pos-y="100">ชิดล่าง</button>
               </div>
-              <div class="preview-label">ตัวอย่างหัวเว็บ</div>
-              <div class="hero-preview" id="hero-preview"></div>
               <div class="upload-row">
-                <label class="btn-upload">🖼️ เลือกรูปพื้นหลัง<input type="file" id="hero-file" accept="image/*"></label>
-                <button type="button" class="btn-link" id="hero-reset">ใช้พื้นฟ้าเดิม</button>
-              </div>
+                <label class="btn-upload">🖼️ เลือกรูปพื้นหลัง<input type="file" id="hero-file" accept="image/*"></label>              </div>
             </div>
 
             <div class="modal-error" id="hero-error"></div>
@@ -924,65 +899,48 @@
     const errorEl = document.getElementById('hero-error');
     const submitBtn = document.getElementById('hero-submit');
     const posRowEl = document.getElementById('pos-row');
-    // ให้กรอบตัวอย่างมีสัดส่วนเท่าหัวเว็บจริง ตำแหน่งที่เห็นจะได้ตรงกับที่แสดงจริง
-    previewEl.style.height = Math.max(60, Math.min(180,
-      Math.round(previewEl.clientWidth * heroEl.offsetHeight / heroEl.offsetWidth))) + 'px';
-    const cropStageEl = document.getElementById('crop-stage');
-    const cropImgEl = document.getElementById('crop-img');
-    const cropFrameEl = document.getElementById('crop-frame');
+    // ให้แถบตัวอย่างมีสัดส่วนกว้าง:สูงเท่าหัวเว็บจริงบนจอนี้พอดี (ไม่ปัดค่า)
+    // เพราะ cover + ตำแหน่งแบบ % ขึ้นกับสัดส่วนเท่านั้น ส่วนที่เห็นจึงตรงกับหัวเว็บจริง
+    previewEl.style.height = (previewEl.clientWidth * heroEl.offsetHeight / heroEl.offsetWidth) + 'px';
     let pos = parsePos(draft.imagePos);
-    // ขนาดกรอบหัวเว็บบนรูปที่แสดง (ใช้สัดส่วนของหัวเว็บจริงบนจอนี้)
-    function frameGeom() {
-      const dw = cropImgEl.clientWidth, dh = cropImgEl.clientHeight;
-      if (!dw || !dh) return null;
-      const ratio = heroEl.offsetWidth / heroEl.offsetHeight;
-      let fw = dw, fh = dw / ratio;
-      if (fh > dh) { fh = dh; fw = dh * ratio; }
-      return { dw: dw, dh: dh, fw: fw, fh: fh, extraW: dw - fw, extraH: dh - fh };
-    }
-    function showPos() {
-      previewEl.style.backgroundPosition = fmtPos(pos);
-      const g = frameGeom();
-      if (!g) return;
-      cropFrameEl.style.width = g.fw + 'px';
-      cropFrameEl.style.height = g.fh + 'px';
-      cropFrameEl.style.transform = 'translate(' + (g.extraW * pos.x / 100) + 'px,' + (g.extraH * pos.y / 100) + 'px)';
-    }
+    let imgSize = null; // ขนาดจริงของรูปพื้นหลัง ใช้คำนวณระยะลาก
+    function showPos() { previewEl.style.backgroundPosition = fmtPos(pos); }
     function showBg() {
       previewEl.style.backgroundImage = draft.image ? 'url("' + draft.image + '")' : '';
+      previewEl.classList.toggle('can-drag', !!draft.image);
       posRowEl.hidden = !draft.image;
-      cropStageEl.hidden = !draft.image;
-      if (draft.image) cropImgEl.src = draft.image; else cropImgEl.removeAttribute('src');
+      imgSize = null;
+      if (draft.image) {
+        const probe = new Image();
+        probe.onload = function () { imgSize = { w: probe.naturalWidth, h: probe.naturalHeight }; };
+        probe.src = draft.image;
+      }
       showPos();
     }
-    cropImgEl.addEventListener('load', showPos);
     function showLogo() { logoPreviewEl.src = draft.logo || HERO_DEFAULTS.logo; }
 
-    // ลากกรอบบนรูปเต็มเพื่อเลือกส่วนที่จะแสดง (คลิกนอกกรอบ = ย้ายกรอบไปตรงนั้น)
+    // ลากรูปในแถบตัวอย่างเพื่อเลื่อนส่วนที่แสดง (รูปขยับตามนิ้ว/เมาส์)
+    // ส่วนเกินของรูป (extra) = ขนาดรูปหลัง cover − ขนาดแถบ; ตำแหน่ง 0–100% คือเลื่อนส่วนเกินนี้
     let drag = null;
     const clamp = function (v) { return Math.max(0, Math.min(100, v)); };
-    function posFromPointer(e, g) {
-      const r = cropImgEl.getBoundingClientRect();
-      if (g.extraW > 0.5) pos.x = clamp((e.clientX - r.left - g.fw / 2) / g.extraW * 100);
-      if (g.extraH > 0.5) pos.y = clamp((e.clientY - r.top - g.fh / 2) / g.extraH * 100);
-    }
-    cropStageEl.addEventListener('pointerdown', function (e) {
-      const g = frameGeom();
-      if (!draft.image || !g) return;
-      if (!cropFrameEl.contains(e.target)) { posFromPointer(e, g); showPos(); }
-      drag = { x0: e.clientX, y0: e.clientY, p0: { x: pos.x, y: pos.y }, g: g };
-      try { cropStageEl.setPointerCapture(e.pointerId); } catch (err) { /* ไม่เป็นไร */ }
-      cropStageEl.classList.add('dragging');
+    previewEl.addEventListener('pointerdown', function (e) {
+      if (!draft.image || !imgSize) return;
+      const bw = previewEl.clientWidth, bh = previewEl.clientHeight;
+      const s = Math.max(bw / imgSize.w, bh / imgSize.h);
+      drag = { x0: e.clientX, y0: e.clientY, p0: { x: pos.x, y: pos.y },
+               extraW: imgSize.w * s - bw, extraH: imgSize.h * s - bh };
+      try { previewEl.setPointerCapture(e.pointerId); } catch (err) { /* ไม่เป็นไร */ }
+      previewEl.classList.add('dragging');
     });
-    cropStageEl.addEventListener('pointermove', function (e) {
+    previewEl.addEventListener('pointermove', function (e) {
       if (!drag) return;
-      if (drag.g.extraW > 0.5) pos.x = clamp(drag.p0.x + (e.clientX - drag.x0) / drag.g.extraW * 100);
-      if (drag.g.extraH > 0.5) pos.y = clamp(drag.p0.y + (e.clientY - drag.y0) / drag.g.extraH * 100);
+      if (drag.extraW > 0.5) pos.x = clamp(drag.p0.x - (e.clientX - drag.x0) / drag.extraW * 100);
+      if (drag.extraH > 0.5) pos.y = clamp(drag.p0.y - (e.clientY - drag.y0) / drag.extraH * 100);
       showPos();
     });
-    function endDrag() { drag = null; cropStageEl.classList.remove('dragging'); }
-    cropStageEl.addEventListener('pointerup', endDrag);
-    cropStageEl.addEventListener('pointercancel', endDrag);
+    function endDrag() { drag = null; previewEl.classList.remove('dragging'); }
+    previewEl.addEventListener('pointerup', endDrag);
+    previewEl.addEventListener('pointercancel', endDrag);
     posRowEl.addEventListener('click', function (e) {
       const b = e.target.closest('[data-pos-y]');
       if (!b) return;
@@ -1011,8 +969,6 @@
       try { draft.logo = await compressImage(file, { maxBytes: 200000, keepAlpha: true }); showLogo(); }
       catch (err) { errorEl.textContent = err.message; }
     });
-    document.getElementById('hero-reset').addEventListener('click', function () { draft.image = ''; pos = { x: 50, y: 50 }; showBg(); });
-    document.getElementById('logo-reset').addEventListener('click', function () { draft.logo = ''; showLogo(); });
 
     submitBtn.addEventListener('click', async function () {
       const title = titleInput.value.trim();
@@ -1050,7 +1006,6 @@
     btnOwner.title = owner ? 'ออกจากงานส่วนตัว' : 'ผู้จัดการ';
     btnHeroImg.style.display = owner ? '' : 'none';
     document.getElementById('btn-master').style.display = owner ? '' : 'none';
-    checkFiscalYear(owner);
     if (!owner) activeCategory = 'all';
     if (owner) {
       // วาดหน้าทันที (การ์ดงานหมวดที่โหลดไว้แล้วแสดงได้เลย) แล้วค่อยวาดซ้ำเมื่องานส่วนตัวโหลดเสร็จ
@@ -1060,29 +1015,6 @@
       FBL.stop && FBL.stop('sites_private');
       renderAll();
     }
-  }
-
-  /* ---------- เตือนเจ้าของเรื่องราคาประเมินปีงบใหม่ (ทุกปี) ----------
-     ก่อน 1 ต.ค. 60 วัน ถ้ายังไม่ได้สร้างราคาปีงบถัดไป / หลังขึ้นปีงบแล้วแต่ยังไม่มีราคาปีนี้ (เงื่อนไขเดียวกับ master-data.html) */
-  async function checkFiscalYear(owner) {
-    const el = document.getElementById('fy-banner');
-    el.style.display = 'none';
-    if (!owner || !FBL.masterItemCount) return;
-    const now = new Date();
-    const cur = now.getFullYear() + 543 + (now.getMonth() >= 9 ? 1 : 0), next = cur + 1;
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const days = Math.round((new Date(next - 544, 9, 1) - today) / 86400000);
-    let msg = '';
-    try {
-      if (!(await FBL.masterItemCount('assets_' + cur))) {
-        msg = '<b>ขึ้นปีงบ ' + cur + ' แล้ว แต่ยังไม่มีราคาประเมินของปีนี้</b> ระบบงานกำลังใช้ราคาปีงบก่อนไปก่อน';
-      } else if (days <= 60 && !(await FBL.masterItemCount('assets_' + next))) {
-        msg = '<b>อีก ' + days + ' วันจะขึ้นปีงบ ' + next + '</b> (1 ต.ค. ' + (next - 1) + ') ยังไม่ได้สร้างราคาประเมินของปีงบ ' + next;
-      }
-    } catch (e) { return; }
-    if (!msg || !isOwner) return;
-    el.innerHTML = msg + ' — <a href="master-data.html#assets">ไปที่ฐานข้อมูลกลาง แท็บราคาประเมิน</a> แล้วกด "สร้างปีงบใหม่"';
-    el.style.display = 'block';
   }
 
   /* ---------- Modal: ล็อกอิน / ตั้งรหัสผ่านเจ้าของครั้งแรก ---------- */
