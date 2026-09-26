@@ -242,6 +242,12 @@
     });
   };
 
+  // จำนวนรายการในเอกสารข้อมูลกลาง (อ่านครั้งเดียว) — ไม่มีเอกสาร = 0
+  FBL.masterItemCount = async function (docId) {
+    const snap = await db.collection('master').doc(docId).get();
+    return snap.exists ? ((snap.data().items || []).length) : 0;
+  };
+
   // บันทึกทั้งเอกสารในคำสั่งเดียว พร้อมเก็บฉบับก่อนแก้ไว้ใน master_history
   // expectVersion = เลขรุ่นที่หน้าเว็บเห็นตอนเริ่มแก้ ถ้าในฐานข้อมูลเปลี่ยนไปแล้ว (เช่น แก้จากอีกแท็บ) จะไม่ยอมบันทึกทับ
   FBL.saveMaster = async function (docId, items, extra, summary, expectVersion) {

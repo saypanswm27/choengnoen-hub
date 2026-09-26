@@ -300,9 +300,35 @@
     if (!FBL.configured) h += '<div class="banner err">ยังไม่ได้ตั้งค่า Firebase ในไฟล์ <code>firebase-layer.js</code></div>';
     if (S.loadError) h += '<div class="banner err">' + esc(S.loadError) + '</div>';
     else if (!S.owner) h += '<div class="banner info">โหมดดูอย่างเดียว ข้อมูลในหน้านี้คือข้อมูลที่ทุกระบบงานใช้อยู่ ถ้าต้องการแก้ไข ให้กด "เข้าสู่ระบบเจ้าของ"</div>';
+    if (S.loaded && !S.loadError) h += fyBanner();
     $('banners').innerHTML = h;
     $('btn-login').textContent = S.owner ? 'ออกจากระบบ' : 'เข้าสู่ระบบเจ้าของ';
     $('who').textContent = S.owner ? 'เจ้าของเว็บ (แก้ไขได้)' : '';
+  }
+
+  // เตือนเรื่องราคาประเมินปีงบใหม่ทุกปี: ก่อนขึ้นปีงบ FY_WARN_DAYS วัน (ถ้ายังไม่ได้สร้าง) และหลังขึ้นปีงบแล้วแต่ยังไม่มีราคา
+  const FY_WARN_DAYS = 60;
+  function savedAssets(fy) { const m = S.master[assetDocId(fy)]; return !!(m && m.items && m.items.length); }
+  function fyBanner() {
+    const cur = currentFiscalYear(), next = cur + 1;
+    const start = new Date(next - 544, 9, 1); // 1 ต.ค. ที่เริ่มปีงบถัดไป
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((start - today) / 86400000);
+    let fy, cls, msg;
+    if (!savedAssets(cur)) {
+      const prev = fiscalYears().filter(function (y) { return y < cur && savedAssets(y); })[0];
+      fy = cur; cls = 'err';
+      msg = '<b>ขึ้นปีงบ ' + cur + ' แล้ว แต่ยังไม่มีราคาประเมินของปีนี้</b> ' +
+        (prev ? 'ระบบงานกำลังใช้ราคาปีงบ ' + prev + ' ไปก่อน' : 'ระบบงานยังไม่มีราคาจากฐานข้อมูลกลางให้ใช้');
+    } else if (days <= FY_WARN_DAYS && !savedAssets(next)) {
+      fy = next; cls = 'warn';
+      msg = '<b>อีก ' + days + ' วันจะขึ้นปีงบ ' + next + '</b> (1 ต.ค. ' + (next - 1) + ') ยังไม่ได้สร้างราคาประเมินของปีงบ ' + next +
+        ' สร้างล่วงหน้าได้เลย ระบบงานจะเริ่มใช้ราคาใหม่เองตั้งแต่ 1 ต.ค.';
+    } else return '';
+    if (S.drafts[assetDocId(fy)]) msg += ' — <b>สร้างเป็นฉบับร่างแล้ว อย่าลืมกด "บันทึกลงฐานข้อมูลกลาง"</b>';
+    else if (S.owner) msg += ' <button class="btn sm" type="button" data-act="fy-new" data-id="' + fy + '">สร้างปีงบ ' + fy + '</button>';
+    else msg += ' (แจ้งเจ้าของเว็บให้เข้าสู่ระบบแล้วสร้าง)';
+    return '<div class="banner ' + cls + '">' + msg + '</div>';
   }
 
   function renderTabs() {
@@ -760,10 +786,10 @@
       });
   }
 
-  function newFiscalYearForm() {
+  function newFiscalYearForm(target) {
     const years = fiscalYears();
     const withData = years.filter(function (y) { return items(assetDocId(y)).length; });
-    const suggest = Math.max.apply(null, years) + (items(assetDocId(Math.max.apply(null, years))).length ? 1 : 0);
+    const suggest = target || Math.max.apply(null, years) + (items(assetDocId(Math.max.apply(null, years))).length ? 1 : 0);
     openModal('สร้างราคาประเมินปีงบใหม่',
       '<div class="form-grid">' +
       field('fy', 'ปีงบประมาณใหม่ (พ.ศ.)', suggest, 'number', 'min="2560" max="2700"') +
@@ -1030,7 +1056,7 @@
       }
       case 'asset-add': assetForm(null); break;
       case 'asset-edit': assetForm(items(assetDocId(S.fy)).find(function (x) { return x.key === id; })); break;
-      case 'fy-new': newFiscalYearForm(); break;
+      case 'fy-new': if (S.tab !== 'assets') { S.tab = 'assets'; render(); } newFiscalYearForm(id ? Number(id) : null); break;
       case 'export': doExport(); break;
       case 'hist-reload': S.history = null; render(); break;
       case 'hist-restore': {

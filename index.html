@@ -749,6 +749,7 @@
       <div id="config-banner" class="config-banner" style="display:none;">
         ยังไม่ได้ตั้งค่า Firebase สำหรับเว็บนี้ — เปิดไฟล์ <code>firebase-layer.js</code> แล้วใส่ค่า <code>firebaseConfig</code> จาก Firebase Console ของโปรเจกต์ที่สร้างไว้ (ดูขั้นตอนใน <code>คู่มือติดตั้ง-อ่านก่อน.md</code>)
       </div>
+      <div id="fy-banner" class="config-banner" style="display:none;"></div>
       <div class="tabs" id="tabs"></div>
       <div id="categories"></div>
     </main>
@@ -871,7 +872,7 @@
       <div class="modal-overlay" id="hero-overlay">
         <div class="modal-box modal-wide">
           <div class="modal-head">
-            <div><div class="modal-label">ตั้งค่า</div><h3>ตั้งค่าหัวเว็บ</h3></div>
+            <div><div class="modal-label">ส่วนหัวเว็บไซต์</div><h3>ตั้งค่ารูปและชื่อเว็บ</h3></div>
             <button type="button" class="modal-close" data-close title="ปิด">×</button>
           </div>
           <div class="modal-body">
@@ -1049,6 +1050,7 @@
     btnOwner.title = owner ? 'ออกจากงานส่วนตัว' : 'ผู้จัดการ';
     btnHeroImg.style.display = owner ? '' : 'none';
     document.getElementById('btn-master').style.display = owner ? '' : 'none';
+    checkFiscalYear(owner);
     if (!owner) activeCategory = 'all';
     if (owner) {
       // วาดหน้าทันที (การ์ดงานหมวดที่โหลดไว้แล้วแสดงได้เลย) แล้วค่อยวาดซ้ำเมื่องานส่วนตัวโหลดเสร็จ
@@ -1058,6 +1060,29 @@
       FBL.stop && FBL.stop('sites_private');
       renderAll();
     }
+  }
+
+  /* ---------- เตือนเจ้าของเรื่องราคาประเมินปีงบใหม่ (ทุกปี) ----------
+     ก่อน 1 ต.ค. 60 วัน ถ้ายังไม่ได้สร้างราคาปีงบถัดไป / หลังขึ้นปีงบแล้วแต่ยังไม่มีราคาปีนี้ (เงื่อนไขเดียวกับ master-data.html) */
+  async function checkFiscalYear(owner) {
+    const el = document.getElementById('fy-banner');
+    el.style.display = 'none';
+    if (!owner || !FBL.masterItemCount) return;
+    const now = new Date();
+    const cur = now.getFullYear() + 543 + (now.getMonth() >= 9 ? 1 : 0), next = cur + 1;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((new Date(next - 544, 9, 1) - today) / 86400000);
+    let msg = '';
+    try {
+      if (!(await FBL.masterItemCount('assets_' + cur))) {
+        msg = '<b>ขึ้นปีงบ ' + cur + ' แล้ว แต่ยังไม่มีราคาประเมินของปีนี้</b> ระบบงานกำลังใช้ราคาปีงบก่อนไปก่อน';
+      } else if (days <= 60 && !(await FBL.masterItemCount('assets_' + next))) {
+        msg = '<b>อีก ' + days + ' วันจะขึ้นปีงบ ' + next + '</b> (1 ต.ค. ' + (next - 1) + ') ยังไม่ได้สร้างราคาประเมินของปีงบ ' + next;
+      }
+    } catch (e) { return; }
+    if (!msg || !isOwner) return;
+    el.innerHTML = msg + ' — <a href="master-data.html#assets">ไปที่ฐานข้อมูลกลาง แท็บราคาประเมิน</a> แล้วกด "สร้างปีงบใหม่"';
+    el.style.display = 'block';
   }
 
   /* ---------- Modal: ล็อกอิน / ตั้งรหัสผ่านเจ้าของครั้งแรก ---------- */

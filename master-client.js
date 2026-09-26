@@ -12,8 +12,10 @@
      CNMaster.findRightOfWay('3', 230500)        // ความกว้างเขตทาง { left, right, basis, ... } ของจุดนั้น
      CNMaster.findSurface('3', 230500)           // ลักษณะผิวทาง { lanesLt, lanesRt, surface, shoulderLeftWidth, ... }
      CNMaster.clearanceToBoundary('3', 230500)   // ระยะจากขอบไหล่ทางถึงแนวเขตทาง ซ้าย/ขวา (ม.)
-     await CNMaster.loadAssets(2569)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันโหลดให้อัตโนมัติ)
-     CNMaster.assets(2569)                       // รายการราคาประเมินของปีงบ
+     await CNMaster.loadAssets(2568)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันและปีก่อนโหลดให้อัตโนมัติ)
+     CNMaster.assets(2569)                       // รายการราคาประเมินของปีงบ (ไม่ระบุปี = ชุดที่ใช้อยู่ ดู assetsYear)
+     CNMaster.assetsYear()                       // ปีงบของราคาที่ใช้อยู่ — ถ้ายังไม่ได้สร้างราคาปีงบใหม่ จะเป็นปีก่อน
+     CNMaster.assetsNotice()                     // ข้อความเตือนเมื่อยังใช้ราคาปีงบเก่า (ไม่ต้องเตือนคืน null)
      CNMaster.priceOn('mat-002', '2026-03-15')   // ราคาของรายการ ณ วันที่ (ใช้ปีงบของวันนั้น)
      CNMaster.onChange(function (what) { ... })  // เรียกเมื่อเจ้าของแก้ข้อมูลกลาง what = 'routes' | 'zones' | 'assets_2569' ...
      CNMaster.adminRoutes()                      // สายทางในรูปแบบของระบบบริหารหมวด (routeNo, ranges เป็นกิโลเมตร)
@@ -74,7 +76,7 @@
           });
         }
         if (first) { first = false; resolve(docs[docId]); return; }
-        listeners.forEach(function (cb) { try { cb(docId, docs[docId]); } catch (e) { console.error(e); } });
+        notify(docId);
       }, function (err) {
         console.error('CNMaster: อ่าน master/' + docId + ' ไม่สำเร็จ', err);
         if (first) { first = false; resolve(null); }
@@ -84,8 +86,21 @@
   }
 
   function list(docId) { return (docs[docId] && docs[docId].items) || []; }
+  function notify(docId) {
+    listeners.forEach(function (cb) { try { cb(docId, docs[docId]); } catch (e) { console.error(e); } });
+  }
 
-  M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchDoc('assets_' + M.fiscalYear())]).then(function () { return M; });
+  // ราคาประเมิน: โหลดปีงบปัจจุบัน + ปีก่อน (ใช้แทนช่วงต้นปีงบที่ยังไม่ได้สร้างราคาปีใหม่ และเคสย้อนหลัง)
+  function watchAssetYears(fy) { return Promise.all([watchDoc('assets_' + fy), watchDoc('assets_' + (fy - 1))]); }
+  let watchedFy = M.fiscalYear();
+  M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchAssetYears(watchedFy)]).then(function () { return M; });
+  // เปิดหน้าค้างข้าม 1 ต.ค. → เริ่มอ่านราคาปีงบใหม่ แล้วแจ้งระบบงานให้ใช้ราคาชุดใหม่ (ไม่ต้องรีเฟรช)
+  setInterval(function () {
+    const fy = M.fiscalYear();
+    if (fy === watchedFy) return;
+    watchedFy = fy;
+    watchAssetYears(fy).then(function () { notify('assets_' + fy); });
+  }, 10 * 60 * 1000);
   M.onChange = function (cb) { listeners.push(cb); };
   M.version = function (docId) { return docs[docId] ? docs[docId].version : 0; };
   M.updatedAt = function (docId) { return docs[docId] ? (docs[docId].updatedAt || '') : ''; };
@@ -175,10 +190,23 @@
 
   /* ---------- ราคาประเมินทรัพย์สิน (แยกปีงบ) ---------- */
   M.loadAssets = function (fy) { return watchDoc('assets_' + fy).then(function () { return list('assets_' + fy); }); };
-  M.assets = function (fy) { return list('assets_' + (fy || M.fiscalYear())); };
+  // ไม่ระบุปี = ราคาชุดที่ใช้อยู่ (ดู assetsYear)
+  M.assets = function (fy) { return list('assets_' + (fy || M.assetsYear())); };
   M.fiscalYearsLoaded = function () {
     return Object.keys(docs).filter(function (k) { return /^assets_\d{4}$/.test(k) && docs[k]; })
-      .map(function (k) { return Number(k.slice(7)); }).sort();
+      .map(function (k) { return Number(k.slice(7)); }).sort(function (a, b) { return a - b; });
+  };
+  // ปีงบของราคาที่ใช้อยู่จริง: ปีงบปัจจุบัน หรือถ้ายังไม่ได้สร้างราคาปีนี้ ใช้ปีล่าสุดก่อนหน้าที่มีราคา
+  M.assetsYear = function () {
+    const fy = M.fiscalYear();
+    const years = M.fiscalYearsLoaded().filter(function (y) { return y <= fy && list('assets_' + y).length; });
+    return years.length ? years[years.length - 1] : fy;
+  };
+  // ข้อความเตือนเมื่อยังใช้ราคาปีงบเก่าอยู่ (ไม่ต้องเตือนคืน null) — ระบบงานนำไปแสดงได้
+  M.assetsNotice = function () {
+    const fy = M.fiscalYear(), used = M.assetsYear();
+    if (used === fy || !list('assets_' + used).length) return null;
+    return 'ฐานข้อมูลกลางยังไม่มีราคาประเมินปีงบ ' + fy + ' ระบบใช้ราคาปีงบ ' + used + ' ไปก่อน';
   };
   // ราคาของรายการ ณ วันที่ — ถ้าปีงบนั้นยังไม่มีราคา (หรือยังไม่ได้โหลด) ใช้ปีงบล่าสุดก่อนหน้าที่มี
   M.priceOn = function (key, date) { return M.priceInYear(key, M.fiscalYear(date) || M.fiscalYear()); };
