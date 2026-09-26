@@ -12,7 +12,7 @@
      CNMaster.findRightOfWay('3', 230500)        // ความกว้างเขตทาง { left, right, basis, ... } ของจุดนั้น
      CNMaster.findSurface('3', 230500)           // ลักษณะผิวทาง { lanesLt, lanesRt, surface, shoulderLeftWidth, ... }
      CNMaster.clearanceToBoundary('3', 230500)   // ระยะจากขอบไหล่ทางถึงแนวเขตทาง ซ้าย/ขวา (ม.)
-     CNMaster.workCodes()                        // รหัสงานทั้งหมด [{ code, name, nameEn, units: ['ตร.ม.', 'ตัน'], parent }]
+     CNMaster.workCodes()                        // รหัสงานทั้งหมด [{ code, name, nameEn, units: ['ตร.ม.', 'ตัน'], parent, output?, description? }]
      CNMaster.findWorkCode('21113')              // รหัสงานเดียว (ไม่มีคืน null)
      CNMaster.unitsOf('21113')                   // หน่วยนับที่ใช้ได้ของรหัสงาน ['ตร.ม.', 'ตัน'] (ตัวแรก = หน่วยหลัก, หัวข้อหมวด/ไม่พบ = [])
      await CNMaster.loadAssets(2568)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันและปีก่อนโหลดให้อัตโนมัติ)

@@ -914,9 +914,13 @@
       '<label class="f full">ลักษณะงาน (ภาษาไทย) *<textarea name="name" rows="2">' + esc(x.name) + '</textarea></label>' +
       field('nameEn', 'ชื่อภาษาอังกฤษ', x.nameEn, 'text', '', 'full') +
       field('units', 'หน่วยนับ (คั่นด้วย , ถ้ามีหลายหน่วย)', (x.units || []).join(', '), 'text', 'placeholder="เช่น ม., ตร.ม., ลบ.ม."', 'full') +
-      '</div><p class="hint">หน่วยแรกคือหน่วยหลัก ระบบงานจะใช้เป็นค่าเริ่มต้น ปล่อยหน่วยนับว่าง = เป็นหัวข้อหมวด (ไม่ใช่รหัสที่ลงผลงานได้)</p>',
+      field('output', 'ผลผลิต', x.output, 'text', '', 'full') +
+      '<label class="f full">คำอธิบายลักษณะงาน<textarea name="description" rows="3">' + esc(x.description) + '</textarea></label>' +
+      '</div><p class="hint">หน่วยแรกคือหน่วยหลัก ระบบงานจะใช้เป็นค่าเริ่มต้น ปล่อยหน่วยนับว่าง = เป็นหัวข้อหมวด (ไม่ใช่รหัสที่ลงผลงานได้) · ผลผลิตและคำอธิบาย แสดงในหน้าข้อมูลอ้างอิงงานของระบบบริหารหมวด</p>',
       function (f) {
         const o = { code: f.code.trim(), name: f.name.trim(), nameEn: f.nameEn.trim(), units: parseUnits(f.units), parent: f.parent.trim() };
+        if (f.output.trim()) o.output = f.output.trim();
+        if (f.description.trim()) o.description = f.description.trim();
         if (!/^\d{5}$/.test(o.code)) return 'รหัสงานต้องเป็นตัวเลข 5 หลัก';
         if (!o.name) return 'กรุณาใส่ลักษณะงาน';
         const list = items('workcodes').slice();
@@ -1099,11 +1103,16 @@
     o.id = x.id || (o.highway + '-' + (o.controlNo || '0000') + '-' + String(o.seq).padStart(3, '0'));
     return o;
   }
+  // รองรับทั้งไฟล์ workcodes-seed.json และแถว job_code_reference ของระบบบริหารหมวด (jobCode/jobName/unit/description)
   function normWorkCode(x) {
-    return {
+    const o = {
       code: String(x.code || x.jobCode || '').trim(), name: String(x.name || x.jobName || '').trim(), nameEn: String(x.nameEn || '').trim(),
       units: Array.isArray(x.units) ? parseUnits(x.units.join(',')) : parseUnits(x.unit), parent: String(x.parent || '').trim()
     };
+    const out = String(x.output || '').trim(), desc = String(x.description || x.desc || '').trim();
+    if (out && out !== '-') o.output = out;
+    if (desc) o.description = desc;
+    return o;
   }
   function normAsset(m) {
     return {
