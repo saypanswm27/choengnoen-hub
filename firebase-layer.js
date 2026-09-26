@@ -210,7 +210,7 @@
      ฐานข้อมูลกลาง (master) — ข้อมูลอ้างอิงที่ทุกระบบงานมาอ่าน (ดู master-data.html / master-client.js)
        master/routes        { version, updatedAt, items: [สายทาง] }
        master/zones         { version, updatedAt, items: [เขตพื้นที่รับผิดชอบ] }
-       master/assets_<ปีงบ> { version, updatedAt, fiscalYear, items: [ราคากลางทรัพย์สิน] }
+       master/assets_<ปีงบ> { version, updatedAt, fiscalYear, items: [ราคาประเมินทรัพย์สิน] }
        master_history/{id}  { docId, fromVersion, toVersion, summary, before (JSON), at }
      ========================================================================== */
   // Firestore เก็บ "รายการซ้อนในรายการ" ไม่ได้ ช่วง กม. ของสายทาง [[เริ่ม, สิ้นสุด], ...] จึงเก็บเป็น [{from, to}, ...]

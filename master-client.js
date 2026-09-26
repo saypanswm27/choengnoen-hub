@@ -5,15 +5,15 @@
    วิธีใช้ในระบบงาน (วางหลัง firebase-*-compat.js และก่อน firebase-layer.js ของระบบนั้น):
      <script src="https://choengnoen.github.io/choengnoen-hub/master-client.js"></script>
 
-     await CNMaster.ready;                       // รอข้อมูลชุดแรก (สายทาง + เขตพื้นที่ + ราคากลางปีงบปัจจุบัน)
+     await CNMaster.ready;                       // รอข้อมูลชุดแรก (สายทาง + เขตพื้นที่ + ราคาประเมินปีงบปัจจุบัน)
      CNMaster.routes()                           // สายทางทั้งหมด (รวมที่โอนแล้ว) — รูปแบบเดียวกับ routes เดิมของระบบอุบัติเหตุ/โจรกรรม
      CNMaster.findRoute('3', 230500)             // สายทางที่ครอบคลุม ทล.3 กม.230+500
      CNMaster.findZone('3', 230500)              // เขตพื้นที่ (สภ./ตำบล/อำเภอ) ของจุดนั้น
      CNMaster.findRightOfWay('3', 230500)        // ความกว้างเขตทาง { left, right, basis, ... } ของจุดนั้น
      CNMaster.findSurface('3', 230500)           // ลักษณะผิวทาง { lanesLt, lanesRt, surface, shoulderLeftWidth, ... }
      CNMaster.clearanceToBoundary('3', 230500)   // ระยะจากขอบไหล่ทางถึงแนวเขตทาง ซ้าย/ขวา (ม.)
-     await CNMaster.loadAssets(2569)             // โหลดราคากลางปีงบอื่นเพิ่ม (ปีปัจจุบันโหลดให้อัตโนมัติ)
-     CNMaster.assets(2569)                       // รายการราคากลางของปีงบ
+     await CNMaster.loadAssets(2569)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันโหลดให้อัตโนมัติ)
+     CNMaster.assets(2569)                       // รายการราคาประเมินของปีงบ
      CNMaster.priceOn('mat-002', '2026-03-15')   // ราคาของรายการ ณ วันที่ (ใช้ปีงบของวันนั้น)
      CNMaster.onChange(function (what) { ... })  // เรียกเมื่อเจ้าของแก้ข้อมูลกลาง what = 'routes' | 'zones' | 'assets_2569' ...
      CNMaster.adminRoutes()                      // สายทางในรูปแบบของระบบบริหารหมวด (routeNo, ranges เป็นกิโลเมตร)
@@ -91,6 +91,8 @@
   M.updatedAt = function (docId) { return docs[docId] ? (docs[docId].updatedAt || '') : ''; };
   // ลิงก์หน้าแก้ไขข้อมูลกลาง (ใช้ทำปุ่ม "แก้ไขที่ฐานข้อมูลกลาง" ในระบบงาน)
   M.EDIT_URL = 'https://choengnoen.github.io/choengnoen-hub/master-data.html';
+  // ลิงก์ไปแท็บที่ต้องการ: 'routes' | 'zones' | 'rightofway' | 'surface' | 'assets'
+  M.editUrl = function (tab) { return M.EDIT_URL + (tab ? '#' + tab : ''); };
 
   /* ---------- สายทาง ---------- */
   M.routes = function () { return list('routes'); };
@@ -171,7 +173,7 @@
     };
   };
 
-  /* ---------- ราคากลางทรัพย์สิน (แยกปีงบ) ---------- */
+  /* ---------- ราคาประเมินทรัพย์สิน (แยกปีงบ) ---------- */
   M.loadAssets = function (fy) { return watchDoc('assets_' + fy).then(function () { return list('assets_' + fy); }); };
   M.assets = function (fy) { return list('assets_' + (fy || M.fiscalYear())); };
   M.fiscalYearsLoaded = function () {

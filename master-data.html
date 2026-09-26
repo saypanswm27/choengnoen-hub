@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ฐานข้อมูลกลาง | CN-Hub</title>
-<meta name="description" content="ฐานข้อมูลกลาง สายทาง เขตพื้นที่ และราคากลางทรัพย์สิน ที่ทุกระบบงานหมวดทางหลวงเชิงเนินใช้ร่วมกัน">
+<meta name="description" content="ฐานข้อมูลกลาง สายทาง เขตพื้นที่ และราคาประเมินทรัพย์สิน ที่ทุกระบบงานหมวดทางหลวงเชิงเนินใช้ร่วมกัน">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
@@ -117,7 +117,7 @@
     <div class="top-inner">
       <div>
         <h1>ฐานข้อมูลกลาง</h1>
-        <p class="sub">สายทาง · เขตพื้นที่ · เขตทาง · ผิวทาง · ราคากลางทรัพย์สิน ที่ทุกระบบงานใช้ร่วมกัน</p>
+        <p class="sub">สายทาง · เขตพื้นที่ · เขตทาง · ผิวทาง · ราคาประเมินทรัพย์สิน ที่ทุกระบบงานใช้ร่วมกัน</p>
       </div>
       <div class="top-actions">
         <span class="who" id="who"></span>
@@ -157,7 +157,7 @@
     { key: 'zones', label: 'เขตพื้นที่' },
     { key: 'rightofway', label: 'บัญชีเขตทาง' },
     { key: 'surface', label: 'ผิวทาง' },
-    { key: 'assets', label: 'ราคากลางทรัพย์สิน' },
+    { key: 'assets', label: 'ราคาประเมินทรัพย์สิน' },
     { key: 'io', label: 'นำเข้า / ส่งออก' },
     { key: 'history', label: 'ประวัติการแก้ไข' }
   ];
@@ -177,7 +177,14 @@
     surfHw: '*',
     history: null
   };
+  // เปิดแท็บตามลิงก์ก่อน (เช่น master-data.html#routes จากปุ่ม "แก้ไขที่ฐานข้อมูลกลาง" ในระบบงาน) ไม่มีจึงใช้แท็บล่าสุดที่เปิด
+  function tabFromHash() {
+    const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+    return TABS.some(function (x) { return x.key === h; }) ? h : '';
+  }
   try { const t = localStorage.getItem('cn_master_tab'); if (t && TABS.some(function (x) { return x.key === t; })) S.tab = t; } catch (_) {}
+  if (tabFromHash()) S.tab = tabFromHash();
+  window.addEventListener('hashchange', function () { const t = tabFromHash(); if (t && t !== S.tab) { S.tab = t; render(); } });
 
   /* ---------- ตัวช่วยทั่วไป ---------- */
   function $(id) { return document.getElementById(id); }
@@ -331,7 +338,7 @@
     if (docId === 'rightofway') return 'บัญชีเขตทาง';
     if (docId === 'surface') return 'ผิวทาง';
     const m = docId.match(/^assets_(\d{4})$/);
-    return m ? 'ราคากลางปีงบ ' + m[1] : docId;
+    return m ? 'ราคาประเมินปีงบ ' + m[1] : docId;
   }
 
   /* ----- สายทาง ----- */
@@ -680,7 +687,7 @@
     document.querySelector('#modal-root .modal').style.maxWidth = '760px';
   }
 
-  /* ----- ราคากลางทรัพย์สิน ----- */
+  /* ----- ราคาประเมินทรัพย์สิน ----- */
   function renderAssets(v) {
     const docId = assetDocId(S.fy);
     const all = items(docId);
@@ -704,7 +711,7 @@
       h += '<button class="btn primary" type="button" data-act="asset-add">+ เพิ่มรายการ</button>';
     }
     h += '</div><p class="meta">' + esc(docMeta(docId)) + ' · ทั้งหมด ' + all.length + ' รายการ' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
-    if (!all.length) h += '<div class="empty">ยังไม่มีราคากลางของปีงบ ' + S.fy + (S.owner ? ' กด "สร้างปีงบใหม่" เพื่อคัดลอกจากปีก่อน หรือนำเข้าที่แท็บ "นำเข้า / ส่งออก"' : '') + '</div>';
+    if (!all.length) h += '<div class="empty">ยังไม่มีราคาประเมินของปีงบ ' + S.fy + (S.owner ? ' กด "สร้างปีงบใหม่" เพื่อคัดลอกจากปีก่อน หรือนำเข้าที่แท็บ "นำเข้า / ส่งออก"' : '') + '</div>';
     else {
       h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>รหัส</th><th>รายการ</th><th>หน่วย</th><th class="num">ราคา (บาท)</th><th>หมวด</th><th>ใช้บ่อย</th>' +
         (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
@@ -732,7 +739,7 @@
     const isNew = !a;
     const docId = assetDocId(S.fy);
     a = a || { key: nextAssetKey(), category: '', frequent: false, hidden: false };
-    openModal((isNew ? 'เพิ่มรายการราคากลาง' : 'แก้ไขราคากลาง') + ' ปีงบ ' + S.fy,
+    openModal((isNew ? 'เพิ่มรายการราคาประเมิน' : 'แก้ไขราคาประเมิน') + ' ปีงบ ' + S.fy,
       '<div class="form-grid">' +
       field('key', 'รหัส', a.key, 'text', 'readonly') +
       '<label class="f">หมวด<select name="category">' + CATEGORIES.map(function (c) { return '<option value="' + c.key + '"' + (c.key === (a.category || '') ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') + '</select></label>' +
@@ -757,7 +764,7 @@
     const years = fiscalYears();
     const withData = years.filter(function (y) { return items(assetDocId(y)).length; });
     const suggest = Math.max.apply(null, years) + (items(assetDocId(Math.max.apply(null, years))).length ? 1 : 0);
-    openModal('สร้างราคากลางปีงบใหม่',
+    openModal('สร้างราคาประเมินปีงบใหม่',
       '<div class="form-grid">' +
       field('fy', 'ปีงบประมาณใหม่ (พ.ศ.)', suggest, 'number', 'min="2560" max="2700"') +
       '<label class="f">คัดลอกรายการและราคาจากปี<select name="from"><option value="">ไม่คัดลอก (เริ่มว่าง)</option>' +
@@ -785,10 +792,10 @@
     if (S.owner) {
       h += '<hr style="border:none;border-top:1px solid var(--line);margin:18px 0">' +
         '<h3 style="font-weight:500">นำเข้าข้อมูล</h3>' +
-        '<p class="hint">รองรับไฟล์: <b>master-seed.json</b> (สายทาง + ราคากลาง จากระบบงานโจรกรรม) · <b>rightofway-seed.json</b> (บัญชีเขตทาง 19.3.67) · <b>surface-seed.json</b> (ลักษณะผิวทาง 19.8.69) · ไฟล์สำรองของหน้านี้ · ไฟล์เขตพื้นที่ที่ส่งออกจากระบบงาน<br>' +
+        '<p class="hint">รองรับไฟล์: <b>master-seed.json</b> (สายทาง + ราคาประเมิน จากระบบงานโจรกรรม) · <b>rightofway-seed.json</b> (บัญชีเขตทาง 19.3.67) · <b>surface-seed.json</b> (ลักษณะผิวทาง 19.8.69) · ไฟล์สำรองของหน้านี้ · ไฟล์เขตพื้นที่ที่ส่งออกจากระบบงาน<br>' +
         'ข้อมูลที่นำเข้าจะเป็นฉบับร่างก่อน ตรวจดูในแต่ละแท็บแล้วค่อยกดบันทึก</p>' +
         '<div class="form-grid" style="max-width:640px">' +
-        '<label class="f">ราคากลางในไฟล์ ให้เป็นของปีงบ<input type="number" id="imp-fy" value="' + currentFiscalYear() + '" min="2560" max="2700"></label>' +
+        '<label class="f">ราคาประเมินในไฟล์ ให้เป็นของปีงบ<input type="number" id="imp-fy" value="' + currentFiscalYear() + '" min="2560" max="2700"></label>' +
         '<label class="f">ถ้ารหัสซ้ำกับที่มีอยู่<select id="imp-mode"><option value="skip">ข้าม (เก็บของเดิม)</option><option value="replace">ใช้ข้อมูลจากไฟล์ทับ</option></select></label>' +
         '<label class="f full">เลือกไฟล์ JSON<input type="file" id="imp-file" accept=".json,application/json"></label>' +
         '</div><div id="imp-result" class="meta" style="margin-top:10px"></div>';
@@ -885,13 +892,13 @@
       if (zonesIn && zonesIn.length) report.push(mergeInto('zones', zonesIn.map(function (z) { return normZone(z, items('routes')); }), 'id', mode, null, 'เขตพื้นที่'));
       if (data.surface) report.push(mergeInto('surface', data.surface.map(normSurface), 'id', mode, null, 'ผิวทาง'));
       if (data.rightofway) report.push(mergeInto('rightofway', data.rightofway.map(normRow), 'id', mode, null, 'บัญชีเขตทาง'));
-      if (data.materials) report.push(mergeInto(assetDocId(fy), data.materials.map(normAsset), 'key', mode, { fiscalYear: fy }, 'ราคากลางปีงบ ' + fy));
+      if (data.materials) report.push(mergeInto(assetDocId(fy), data.materials.map(normAsset), 'key', mode, { fiscalYear: fy }, 'ราคาประเมินปีงบ ' + fy));
       if (data.assets && typeof data.assets === 'object') {
         Object.keys(data.assets).forEach(function (y) {
-          report.push(mergeInto(assetDocId(Number(y)), data.assets[y].map(normAsset), 'key', mode, { fiscalYear: Number(y) }, 'ราคากลางปีงบ ' + y));
+          report.push(mergeInto(assetDocId(Number(y)), data.assets[y].map(normAsset), 'key', mode, { fiscalYear: Number(y) }, 'ราคาประเมินปีงบ ' + y));
         });
       }
-      if (!report.length) throw new Error('ไม่พบข้อมูลสายทาง / เขตพื้นที่ / ราคากลาง ในไฟล์นี้');
+      if (!report.length) throw new Error('ไม่พบข้อมูลสายทาง / เขตพื้นที่ / ราคาประเมิน ในไฟล์นี้');
       S.tab = 'io'; render();
       $('imp-result').innerHTML = '✔ อ่านไฟล์ ' + esc(file.name) + ' แล้ว<br>' + report.map(esc).join('<br>') + '<br><b>ยังไม่ได้บันทึก</b> ตรวจดูในแต่ละแท็บแล้วกด "บันทึกลงฐานข้อมูลกลาง"';
     } catch (e) {
@@ -979,6 +986,7 @@
     if (t.dataset.tab) {
       S.tab = t.dataset.tab;
       try { localStorage.setItem('cn_master_tab', S.tab); } catch (_) {}
+      try { history.replaceState(null, '', '#' + S.tab); } catch (_) {} // ลิงก์ในแถบที่อยู่ตรงกับแท็บที่เปิด (คัดลอกไปส่งต่อได้)
       render(); return;
     }
     const id = t.dataset.id;
