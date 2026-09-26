@@ -19,103 +19,237 @@
   - ระบบงานอื่นอ่านข้อมูลชุดนี้ผ่าน master-client.js
 -->
 <style>
+  /* โทนสีฟ้าเดียวกับหัวเว็บหน้าหลัก (index.html) */
   :root {
-    --navy: #16233F;
-    --orange: #E8722A;
-    --orange-soft: #FCE9D8;
-    --sand: #F4F6F9;
-    --ink: #333B4D;
-    --ink-light: #6B7285;
+    --sky-1: #5B9BD5;
+    --sky-2: #8DBCE6;
+    --sky-3: #C7E0F4;
+    --blue-top: #0B3472;
+    --blue-bottom: #1464B4;
+    --blue-glow: rgba(16, 80, 160, 0.35);
+    --deep: #0A2A4F;
+    --bg: #EEF4FA;
+    --ink: #2C3A4F;
+    --ink-light: #66758A;
     --white: #FFFFFF;
-    --line: #DDE3EB;
-    --paper-2: #EDF1F6;
+    --line: #D8E4F0;
+    --line-soft: #E8EFF7;
+    --head: #E4EEF9;
+    --zebra: #F7FAFD;
+    --hover: #EAF3FC;
     --red: #C9302C;
     --green: #1E8E4E;
-    --radius: 12px;
+    --amber: #F2B632;
+    --amber-soft: #FFF6DC;
+    --radius: 14px;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--sand); color: var(--ink); font-family: 'Sarabun', sans-serif; -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Sarabun', sans-serif; -webkit-font-smoothing: antialiased; }
   h1, h2, h3 { font-family: 'Kanit', sans-serif; }
   button, input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 
-  header.top { background: var(--navy); color: var(--white); padding: 18px 16px; }
-  .top-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .top-inner h1 { margin: 0; font-size: 1.4rem; font-weight: 600; }
-  .top-inner .sub { margin: 2px 0 0; color: #C9D2E3; font-size: 0.9rem; }
+  /* ---------- หัวเว็บ (ท้องฟ้าไล่เฉดแบบหน้าหลัก) ---------- */
+  header.top {
+    --hero-bg-image: none;
+    --hero-bg-pos: 50% 50%;
+    background:
+      var(--hero-bg-image) var(--hero-bg-pos) / cover no-repeat,
+      linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 55%, var(--sky-3) 100%);
+    color: var(--deep);
+    padding: 22px 16px 58px;
+  }
+  .top-inner { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .top-logo { width: 58px; height: 58px; object-fit: contain; flex-shrink: 0;
+    filter: drop-shadow(0 0 3px rgba(255,255,255,0.95)) drop-shadow(0 0 8px rgba(255,255,255,0.7)); }
+  .top-title { min-width: 0; flex: 1 1 280px; }
+  .top-inner h1 { margin: 0; font-size: 1.65rem; font-weight: 700; line-height: 1.2; color: var(--deep);
+    text-shadow: 0 0 2px #fff, 0 0 4px #fff, 0 0 10px rgba(255,255,255,0.9); }
+  .top-inner .sub { margin: 2px 0 0; color: #16324F; font-size: 0.92rem;
+    text-shadow: 0 0 2px #fff, 0 0 6px rgba(255,255,255,0.9); }
   .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .top a, .top button.link { color: var(--white); text-decoration: none; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 6px 12px; background: transparent; cursor: pointer; }
-  .top a:hover, .top button.link:hover { background: rgba(255,255,255,0.12); }
-  .who { font-size: 0.85rem; color: #C9D2E3; }
+  .top a, .top button.link {
+    color: var(--deep); text-decoration: none; font-weight: 600; font-size: 0.9rem;
+    border: 1px solid rgba(10,42,79,0.2); border-radius: 10px; padding: 7px 14px;
+    background: rgba(255,255,255,0.6); cursor: pointer; backdrop-filter: blur(4px);
+    transition: background 0.15s ease;
+  }
+  .top a:hover, .top button.link:hover { background: rgba(255,255,255,0.9); }
+  .who:not(:empty) { font-size: 0.82rem; font-weight: 600; color: var(--white); background: var(--green);
+    border-radius: 999px; padding: 4px 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
-  .banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.92rem; line-height: 1.5; }
-  .banner.info { background: var(--paper-2); border: 1px solid var(--line); }
-  .banner.warn { background: #FFF4D6; border: 1px solid #F0D48A; }
-  .banner.err { background: #FDE2E0; border: 1px solid #F2B1AC; }
+  main { max-width: 1180px; margin: -40px auto 0; padding: 0 16px 40px; position: relative; }
 
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-  .tab { border: 1px solid var(--line); background: var(--white); border-radius: 999px; padding: 7px 14px; cursor: pointer; color: var(--ink); }
-  .tab.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
-  .tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--orange); color: var(--white); font-size: 0.75rem; text-align: center; }
+  /* ---------- แถบแจ้งเตือน ---------- */
+  .banner { border-radius: 12px; padding: 10px 14px 10px 40px; margin-bottom: 12px; font-size: 0.92rem; line-height: 1.55; position: relative; }
+  .banner::before { position: absolute; left: 14px; top: 10px; font-size: 1rem; }
+  .banner.info { background: #F2F8FE; border: 1px solid #CFE2F5; color: #1B3F66; }
+  .banner.info::before { content: 'ℹ️'; }
+  .banner.warn { background: #FFF7E0; border: 1px solid #F3DC99; }
+  .banner.warn::before { content: '⚠️'; }
+  .banner.err { background: #FDE8E6; border: 1px solid #F2B8B3; color: #8A1F1A; }
+  .banner.err::before { content: '⛔'; }
+  #banners .banner { box-shadow: 0 4px 14px -8px rgba(10,42,79,0.3); }
 
-  .panel { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  /* ---------- แท็บ ---------- */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 14px; padding: 6px;
+    background: var(--white); border-radius: 16px; border: 1px solid var(--line);
+    box-shadow: 0 8px 24px -14px rgba(10,42,79,0.35);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border: none; background: transparent; border-radius: 11px; padding: 9px 14px; cursor: pointer;
+    color: var(--ink-light); font-family: 'Kanit', sans-serif; font-weight: 500; font-size: 0.92rem; white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .tab svg { width: 17px; height: 17px; flex: none; }
+  .tab:hover { background: var(--hover); color: var(--blue-bottom); }
+  .tab.active {
+    background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom)); color: var(--white);
+    box-shadow: 0 6px 14px -6px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+  .tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--amber); color: #4A3500; font-size: 0.72rem; font-weight: 700; text-align: center; line-height: 18px; }
+
+  /* ---------- กล่องเนื้อหา ---------- */
+  .panel { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: 0 6px 20px -14px rgba(10,42,79,0.35); }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
   .toolbar .grow { flex: 1 1 200px; }
-  .toolbar input[type=search], .toolbar select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; }
-  .meta { font-size: 0.82rem; color: var(--ink-light); margin: 0 0 8px; }
+  .toolbar > label:not(.chk) { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--ink-light); }
+  .toolbar input[type=search], .toolbar select {
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); width: 100%; color: var(--ink);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .toolbar input[type=search] {
+    padding-left: 34px;
+    background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2366758A' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") 11px 50% no-repeat;
+  }
+  .toolbar input:focus, .toolbar select:focus, label.f input:focus, label.f select:focus, label.f textarea:focus {
+    outline: none; border-color: var(--blue-bottom); box-shadow: 0 0 0 3px rgba(20,100,180,0.15);
+  }
+  .meta { font-size: 0.84rem; color: var(--ink-light); margin: 0 0 8px; }
 
-  .btn { border: 1px solid var(--line); background: var(--white); color: var(--ink); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
-  .btn:hover { border-color: var(--orange); color: var(--orange); }
-  .btn.primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
-  .btn.primary:hover { background: #D5651E; color: var(--white); }
+  /* ตัวเลขสรุปด้านบนตาราง */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 14px; }
+  .stat { background: linear-gradient(180deg, #F4F9FE, #FFFFFF); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; border-top: 3px solid var(--sky-1); }
+  .stat .k { font-size: 0.8rem; color: var(--ink-light); }
+  .stat .v { font-family: 'Kanit', sans-serif; font-size: 1.35rem; font-weight: 600; color: var(--blue-top); line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .stat .v small { font-size: 0.8rem; font-weight: 400; color: var(--ink-light); margin-left: 3px; }
+
+  /* ---------- ปุ่ม ---------- */
+  .btn { border: 1px solid var(--line); background: var(--white); color: var(--ink); border-radius: 10px; padding: 8px 14px; cursor: pointer; white-space: nowrap; font-weight: 500;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+  .btn:hover { border-color: var(--blue-bottom); color: var(--blue-bottom); background: #F5FAFF; }
+  .btn.primary { background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom)); border-color: transparent; color: var(--white);
+    box-shadow: 0 6px 14px -6px var(--blue-glow), inset 0 1px 0 rgba(255,255,255,0.12); }
+  .btn.primary:hover { background: linear-gradient(180deg, #082A5E, #0D52A0); color: var(--white); }
   .btn.danger { color: var(--red); }
-  .btn.danger:hover { border-color: var(--red); }
-  .btn.sm { padding: 3px 8px; font-size: 0.82rem; }
+  .btn.danger:hover { border-color: var(--red); color: var(--red); background: #FDF0EF; }
+  .btn.sm { padding: 3px 10px; font-size: 0.82rem; border-radius: 8px; }
   .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
-  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-  th, td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-  th { background: var(--paper-2); font-family: 'Kanit', sans-serif; font-weight: 500; white-space: nowrap; position: sticky; top: 0; }
-  td.num, th.num { text-align: right; white-space: nowrap; }
-  tr.changed td { background: var(--orange-soft); }
-  tr.muted td { color: var(--ink-light); }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; background: var(--paper-2); }
+  /* ---------- ตาราง ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--white); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 0.9rem; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: middle; white-space: nowrap; }
+  /* คอลัมน์ข้อความยาว (ชื่อตอน หมายเหตุ ชื่อรายการ) ให้ตัดบรรทัดได้ */
+  td.wrap { white-space: normal; min-width: 180px; }
+  th { background: var(--head); color: var(--deep); font-family: 'Kanit', sans-serif; font-weight: 500; font-size: 0.86rem; white-space: nowrap;
+    position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--line); }
+  th .hint { font-weight: 400; }
+  tbody tr:nth-child(even) td { background: var(--zebra); }
+  tbody tr:hover td { background: var(--hover); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* หมายเลขทางหลวงในคอลัมน์แรก แสดงเป็นป้าย */
+  tbody td:first-child > b { display: inline-block; min-width: 42px; text-align: center; padding: 1px 8px; border-radius: 7px;
+    background: #DCEBFA; color: var(--blue-top); font-family: 'Kanit', sans-serif; font-weight: 600; }
+  tr.changed td, tbody tr.changed:nth-child(even) td { background: var(--amber-soft); }
+  tr.changed td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
+  tr.muted td { color: #98A3B3; }
+  tr.muted td:first-child > b { background: #EEF0F3; color: #8A94A3; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; background: #E4EEF9; color: var(--blue-top); white-space: nowrap; }
   .pill.ok { background: #DDF3E6; color: var(--green); }
-  .pill.off { background: #EEE; color: #777; }
-  .row-actions { white-space: nowrap; }
-  .empty { padding: 24px; text-align: center; color: var(--ink-light); }
+  .pill.ok::before { content: '● '; font-size: 0.7em; vertical-align: 1px; }
+  .pill.off { background: #EEF0F3; color: #77808D; }
+  .row-actions { white-space: nowrap; text-align: right; }
+  .empty { padding: 36px 20px; text-align: center; color: var(--ink-light); }
+  .panel.empty { padding: 48px 20px; }
 
-  .savebar { position: sticky; bottom: 0; margin-top: 12px; background: var(--navy); color: var(--white); border-radius: 12px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 -4px 16px rgba(0,0,0,0.12); }
+  /* ---------- แถบบันทึก ---------- */
+  .savebar { position: sticky; bottom: 12px; margin-top: 14px; background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom)); color: var(--white);
+    border-radius: 14px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    box-shadow: 0 12px 30px -10px rgba(10,42,79,0.55); z-index: 5; }
   .savebar .grow { flex: 1 1 220px; font-size: 0.9rem; }
+  .savebar .grow::before { content: '✎ '; }
+  .savebar .btn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); color: var(--white); }
+  .savebar .btn:hover { background: rgba(255,255,255,0.22); }
+  .savebar .btn.primary { background: var(--white); color: var(--blue-top); font-weight: 700; border-color: var(--white); box-shadow: none; }
+  .savebar .btn.primary:hover { background: #E8F2FC; }
   .savebar[hidden] { display: none; }
 
-  .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; z-index: 50; }
-  .modal { background: var(--white); border-radius: 14px; width: 100%; max-width: 560px; padding: 18px; }
-  .modal h3 { margin: 0 0 12px; font-weight: 500; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* ---------- หน้าต่างป๊อปอัป (แบบเดียวกับหน้าหลัก) ---------- */
+  .modal-bg { position: fixed; inset: 0; background: rgba(10,26,48,0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 20px 12px; z-index: 50; animation: modalFade 0.15s ease; }
+  @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+  .modal { background: var(--white); border-radius: 20px; border-top: 4px solid var(--blue-bottom); width: 100%; max-width: 580px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 26px 64px -18px rgba(10,26,48,0.5);
+    animation: modalPop 0.18s cubic-bezier(.22,.9,.32,1.2); }
+  @keyframes modalPop { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+  .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 18px 22px 10px; flex: none; }
+  .modal-head h3 { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--deep); line-height: 1.35; }
+  .modal-x { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--line-soft); color: var(--ink-light);
+    font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center; transition: background 0.15s, color 0.15s; }
+  .modal-x:hover { background: var(--blue-top); color: var(--white); }
+  .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 6px 22px 12px; scrollbar-width: thin; scrollbar-color: #BFD0E2 transparent; }
+  .modal-body > .table-wrap { max-height: 55vh; overflow: auto; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .form-grid .full { grid-column: 1 / -1; }
-  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--ink-light); }
-  label.f input, label.f select, label.f textarea { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--white); }
-  label.chk { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
-  .hint { font-size: 0.78rem; color: var(--ink-light); }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
-  .form-err { color: var(--red); font-size: 0.88rem; margin-top: 8px; min-height: 1em; }
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: 0.82rem; font-weight: 600; color: var(--ink-light); }
+  label.f input, label.f select, label.f textarea { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--white);
+    font-weight: 400; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  label.f input[readonly] { background: var(--line-soft); color: var(--ink-light); }
+  label.f input[type=file] { padding: 7px; border-style: dashed; background: #F7FAFD; }
+  label.f input[type=file]::file-selector-button { font-family: 'Kanit', sans-serif; border: none; border-radius: 8px; padding: 6px 12px; margin-right: 10px;
+    background: linear-gradient(180deg, var(--blue-top), var(--blue-bottom)); color: var(--white); cursor: pointer; }
+  label.chk { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; cursor: pointer; }
+  label.chk input { width: 17px; height: 17px; margin: 0; accent-color: var(--blue-bottom); }
+  .hint { font-size: 0.8rem; color: var(--ink-light); line-height: 1.55; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 22px; border-top: 1px solid var(--line); flex: none; flex-wrap: wrap; background: var(--white); }
+  .form-err { color: var(--red); font-size: 0.88rem; margin-top: 8px; }
+  .form-err:empty { display: none; }
 
-  .hist-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
-  .hist-item pre { white-space: pre-wrap; margin: 6px 0; font-family: inherit; font-size: 0.88rem; }
-  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--navy); color: var(--white); padding: 10px 16px; border-radius: 10px; z-index: 80; font-size: 0.92rem; max-width: calc(100% - 32px); }
+  /* ---------- ประวัติ / นำเข้า-ส่งออก ---------- */
+  .hist-item { border: 1px solid var(--line); border-left: 4px solid var(--sky-1); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--white); }
+  .hist-item:hover { border-left-color: var(--blue-bottom); background: #FAFCFF; }
+  .hist-item pre { white-space: pre-wrap; margin: 8px 0; font-family: inherit; font-size: 0.88rem; background: var(--zebra); border-radius: 8px; padding: 8px 10px; }
+  .panel h3 { color: var(--deep); font-weight: 600 !important; display: flex; align-items: center; gap: 8px; }
+  .panel h3::before { content: ''; width: 6px; height: 20px; border-radius: 3px; background: linear-gradient(180deg, var(--sky-1), var(--blue-bottom)); }
+  #imp-result:not(:empty) { background: #F2F8FE; border: 1px solid #CFE2F5; border-radius: 10px; padding: 10px 12px; line-height: 1.7; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--deep); color: var(--white); padding: 11px 18px;
+    border-radius: 12px; z-index: 80; font-size: 0.92rem; max-width: calc(100% - 32px); box-shadow: 0 12px 30px -10px rgba(10,42,79,0.6); }
 
   @media (max-width: 600px) {
+    header.top { padding: 16px 16px 52px; }
+    .top-logo { width: 46px; height: 46px; }
+    .top-inner h1 { font-size: 1.3rem; }
+    .top-inner .sub { font-size: 0.82rem; }
+    .top-actions { margin-left: 0; width: 100%; }
     .form-grid { grid-template-columns: 1fr; }
-    .top-inner h1 { font-size: 1.2rem; }
+    .tab { flex: 0 0 auto; }
+    .panel { padding: 12px; }
+    .modal-head, .modal-actions { padding-left: 16px; padding-right: 16px; }
+    .modal-body { padding: 6px 16px 12px; }
   }
 </style>
 </head>
 <body>
   <header class="top">
     <div class="top-inner">
-      <div>
+      <img class="top-logo" id="top-logo" src="assets/mascot-logo-badge.png" alt="">
+      <div class="top-title">
         <h1>ฐานข้อมูลกลาง</h1>
         <p class="sub">สายทาง · เขตพื้นที่ · เขตทาง · ผิวทาง · ราคาประเมินทรัพย์สิน ที่ทุกระบบงานใช้ร่วมกัน</p>
       </div>
@@ -126,6 +260,16 @@
       </div>
     </div>
   </header>
+  <script>
+    // ใช้รูปโปรไฟล์และรูปพื้นหลังหัวเว็บเดียวกับหน้าหลัก (หน้าหลักเก็บสำเนาไว้ในเครื่อง)
+    try {
+      const h = JSON.parse(localStorage.getItem('cnhub.heroSettings') || '{}');
+      const top = document.querySelector('header.top');
+      if (h.image) top.style.setProperty('--hero-bg-image', 'url("' + h.image + '")');
+      if (h.imagePos) top.style.setProperty('--hero-bg-pos', h.imagePos);
+      if (h.logo) document.getElementById('top-logo').src = h.logo;
+    } catch (_) { /* ไม่มีค่าที่ตั้งไว้ ใช้ค่าเริ่มต้น */ }
+  </script>
 
   <main>
     <div id="banners"></div>
@@ -153,14 +297,15 @@
   ];
   const SIDES = ['', 'ซ้ายทาง', 'ขวาทาง', 'ทั้งสองฝั่ง'];
   const TABS = [
-    { key: 'routes', label: 'สายทาง' },
-    { key: 'zones', label: 'เขตพื้นที่' },
-    { key: 'rightofway', label: 'บัญชีเขตทาง' },
-    { key: 'surface', label: 'ผิวทาง' },
-    { key: 'assets', label: 'ราคาประเมินทรัพย์สิน' },
-    { key: 'io', label: 'นำเข้า / ส่งออก' },
-    { key: 'history', label: 'ประวัติการแก้ไข' }
+    { key: 'routes', label: 'สายทาง', icon: '<path d="M4 21 9 3"/><path d="M20 21 15 3"/><path d="M12 5v3M12 11v3M12 17v3"/>' },
+    { key: 'zones', label: 'เขตพื้นที่', icon: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>' },
+    { key: 'rightofway', label: 'บัญชีเขตทาง', icon: '<path d="M3 12h18"/><path d="M7 8l-4 4 4 4"/><path d="M17 8l4 4-4 4"/>' },
+    { key: 'surface', label: 'ผิวทาง', icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18"/>' },
+    { key: 'assets', label: 'ราคาประเมินทรัพย์สิน', icon: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>' },
+    { key: 'io', label: 'นำเข้า / ส่งออก', icon: '<path d="M7 10l5-5 5 5"/><path d="M12 5v11"/><path d="M4 19h16"/>' },
+    { key: 'history', label: 'ประวัติการแก้ไข', icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' }
   ];
+  function tabIcon(t) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>'; }
 
   /* ---------- สถานะหน้าเว็บ ---------- */
   const S = {
@@ -316,7 +461,7 @@
       if (t.key === 'rightofway' && S.drafts.rightofway) n = 1;
       if (t.key === 'surface' && S.drafts.surface) n = 1;
       if (t.key === 'assets') n = Object.keys(S.drafts).filter(function (k) { return /^assets_/.test(k); }).length;
-      return '<button type="button" class="tab' + (S.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' + esc(t.label) +
+      return '<button type="button" class="tab' + (S.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' + tabIcon(t) + esc(t.label) +
         (n ? '<span class="badge" title="มีการแก้ไขที่ยังไม่บันทึก">' + n + '</span>' : '') + '</button>';
     }).join('');
   }
@@ -358,15 +503,21 @@
     h += '</div>';
     if (!list.length) h += '<div class="empty">ยังไม่มีสายทาง นำเข้าข้อมูลตั้งต้นได้ที่แท็บ "นำเข้า / ส่งออก"</div>';
     else {
+      // ตัวเลขรวมเฉพาะสายทางที่ยังดูแลอยู่
+      const act = list.filter(function (r) { return r.status !== 'transferred'; });
+      const sum = function (k) { return act.reduce(function (s, r) { return s + (Number(r[k]) || 0); }, 0); };
+      h += '<div class="stats">' + stat('สายทางที่ดูแล', act.length, 'ตอน') + stat('ระยะทางจริง', fmtNum(sum('distanceActual'), 3), 'กม.') +
+        stat('เทียบ 2 ช่องจราจร', fmtNum(sum('distance2Lane'), 3), 'กม.') + stat('ผิวลาดยาง', fmtNum(sum('asphalt'), 3), 'กม.') +
+        stat('ผิวคอนกรีต', fmtNum(sum('concrete'), 3), 'กม.') + '</div>';
       h += '<div class="table-wrap"><table><thead><tr><th>ทางหลวง</th><th>ตอนควบคุม</th><th>ชื่อตอน</th><th>ช่วง กม.</th>' +
         '<th class="num">ระยะจริง (กม.)</th><th class="num">ระยะ 2 ช่องจราจร</th><th class="num">ลาดยาง</th><th class="num">คอนกรีต</th><th class="num">ปริมาณงาน</th><th>สถานะ</th>' +
         (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
       list.forEach(function (r) {
         const cls = [changed.has(r.id) ? 'changed' : '', r.status === 'transferred' ? 'muted' : ''].join(' ');
-        h += '<tr class="' + cls + '"><td><b>' + esc(r.highway) + '</b></td><td>' + esc(r.controlNo) + '</td><td>' + esc(r.section) + '</td>' +
-          '<td>' + esc(fmtRanges(r.kmRanges)) + '</td>' +
-          '<td class="num">' + fmtNum(r.distanceActual) + '</td><td class="num">' + fmtNum(r.distance2Lane) + '</td>' +
-          '<td class="num">' + fmtNum(r.asphalt) + '</td><td class="num">' + fmtNum(r.concrete) + '</td><td class="num">' + fmtNum(r.workQty) + '</td>' +
+        h += '<tr class="' + cls + '"><td><b>' + esc(r.highway) + '</b></td><td>' + esc(r.controlNo) + '</td><td class="wrap">' + esc(r.section) + '</td>' +
+          '<td class="wrap" style="min-width:150px">' + esc(fmtRanges(r.kmRanges)) + '</td>' +
+          '<td class="num">' + fmtNum(r.distanceActual, 3) + '</td><td class="num">' + fmtNum(r.distance2Lane, 3) + '</td>' +
+          '<td class="num">' + fmtNum(r.asphalt, 3) + '</td><td class="num">' + fmtNum(r.concrete, 3) + '</td><td class="num">' + fmtNum(r.workQty, 3) + '</td>' +
           '<td>' + (r.status === 'transferred' ? '<span class="pill off" title="' + esc(r.transferNote || '') + '">โอนแล้ว ' + esc(r.transferredDate || '') + '</span>' : '<span class="pill ok">ดูแลอยู่</span>') + '</td>' +
           (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="route-edit" data-id="' + esc(r.id) + '">แก้ไข</button> ' +
             '<button class="btn sm danger" type="button" data-act="route-del" data-id="' + esc(r.id) + '">ลบ</button></td>' : '') + '</tr>';
@@ -375,6 +526,10 @@
       h += '<p class="hint" style="margin-top:8px">ถ้าโอนสายทางให้หมวดอื่น แนะนำให้เปลี่ยนสถานะเป็น "โอนแล้ว" แทนการลบ เพื่อไม่ให้เคสเก่าที่อ้างถึงสายทางนี้เสีย</p>';
     }
     v.innerHTML = h + '</div>';
+  }
+
+  function stat(label, value, unit) {
+    return '<div class="stat"><div class="k">' + esc(label) + '</div><div class="v">' + esc(value) + '<small>' + esc(unit) + '</small></div></div>';
   }
 
   function routeForm(r) {
@@ -435,7 +590,7 @@
       list.forEach(function (z) {
         h += '<tr class="' + (changed.has(z.id) ? 'changed' : '') + '"><td><b>' + esc(z.highway) + '</b>' + (z.routeId ? ' <span class="hint">' + esc(z.routeId) + '</span>' : '') + '</td>' +
           '<td>' + esc(fmtKm(z.kmStart) + ' – ' + fmtKm(z.kmEnd)) + '</td><td>' + esc(z.side) + '</td><td>' + esc(z.station) + '</td>' +
-          '<td>' + esc(z.tambon) + '</td><td>' + esc(z.amphoe) + '</td><td>' + esc(z.changwat) + '</td><td>' + esc((z.moobans || []).join(', ')) + '</td>' +
+          '<td>' + esc(z.tambon) + '</td><td>' + esc(z.amphoe) + '</td><td>' + esc(z.changwat) + '</td><td class="wrap">' + esc((z.moobans || []).join(', ')) + '</td>' +
           (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="zone-edit" data-id="' + esc(z.id) + '">แก้ไข</button> ' +
             '<button class="btn sm danger" type="button" data-act="zone-del" data-id="' + esc(z.id) + '">ลบ</button></td>' : '') + '</tr>';
       });
@@ -517,7 +672,7 @@
         h += '<tr class="' + (changed.has(x.id) ? 'changed' : '') + '"><td><b>' + esc(x.highway) + '</b></td><td>' + esc(x.controlNo) + '</td><td class="num">' + esc(x.seq) + '</td>' +
           '<td style="white-space:nowrap">' + esc(x.kmStart === x.kmEnd ? fmtKm(x.kmStart) : fmtKm(x.kmStart) + ' – ' + fmtKm(x.kmEnd)) + '</td>' +
           '<td class="num">' + fmtW(x.left) + '</td><td class="num">' + fmtW(x.right) + '</td>' +
-          '<td>' + esc(x.basis) + '</td><td' + (warn ? ' style="color:var(--red)"' : '') + '>' + (warn ? '⚠ ' : '') + esc(x.note) + '</td>' +
+          '<td class="wrap">' + esc(x.basis) + '</td><td class="wrap"' + (warn ? ' style="color:var(--red)"' : '') + '>' + (warn ? '⚠ ' : '') + esc(x.note) + '</td>' +
           (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="row-edit" data-id="' + esc(x.id) + '">แก้ไข</button> ' +
             '<button class="btn sm danger" type="button" data-act="row-del" data-id="' + esc(x.id) + '">ลบ</button></td>' : '') + '</tr>';
       });
@@ -586,7 +741,7 @@
         (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
       list.forEach(function (x) {
         h += '<tr class="' + (changed.has(x.id) ? 'changed' : '') + '"><td><b>' + esc(x.highway) + '</b></td><td>' + esc(x.controlNo) + '</td>' +
-          '<td style="white-space:nowrap">' + esc(fmtKm(x.kmStart) + ' – ' + fmtKm(x.kmEnd)) + '</td><td class="num">' + fmtNum((x.kmEnd - x.kmStart) / 1000) + '</td>' +
+          '<td style="white-space:nowrap">' + esc(fmtKm(x.kmStart) + ' – ' + fmtKm(x.kmEnd)) + '</td><td class="num">' + fmtNum((x.kmEnd - x.kmStart) / 1000, 3) + '</td>' +
           '<td>' + esc(SIDE_TH[x.side] || x.side) + '</td><td class="num">' + esc(x.lanes) + '</td><td class="num">' + fmtW(x.laneWidth) + '</td>' +
           '<td>' + (x.surface === 'conc' ? '<span class="pill">คอนกรีต</span>' : esc(SURF[x.surface || ''])) + '</td>' +
           '<td class="num">' + fmtW(x.shoulderLeftWidth) + '</td><td class="num">' + fmtW(x.shoulderRightWidth) + '</td><td>' + esc(x.asOf) + '</td>' +
@@ -673,7 +828,7 @@
     });
     t += '</tbody></table></div>';
     openModal('คำนวณสถิติสายทางจากข้อมูลผิวทาง', t +
-      '<p class="hint">แถวสีส้ม = ตัวเลขต่างจากที่บันทึกไว้ ติ๊กเลือกสายทางที่ต้องการอัปเดต (ปริมาณงานไม่ถูกแก้ เพราะยังไม่มีสูตรคำนวณ)</p>',
+      '<p class="hint">แถวสีเหลือง = ตัวเลขต่างจากที่บันทึกไว้ ติ๊กเลือกสายทางที่ต้องการอัปเดต (ปริมาณงานไม่ถูกแก้ เพราะยังไม่มีสูตรคำนวณ)</p>',
       function (f) {
         const list = items('routes').map(function (r) { return Object.assign({}, r); });
         const done = [];
@@ -739,7 +894,7 @@
         (editable ? '<th></th>' : '') + '</tr></thead><tbody>';
       list.forEach(function (a) {
         const cls = [changed.has(a.key) ? 'changed' : '', a.hidden ? 'muted' : ''].join(' ');
-        h += '<tr class="' + cls + '"><td>' + esc(a.key) + '</td><td>' + esc(a.name) + (a.hidden ? ' <span class="pill off">ซ่อน</span>' : '') + '</td><td>' + esc(a.unit) + '</td>' +
+        h += '<tr class="' + cls + '"><td>' + esc(a.key) + '</td><td class="wrap" style="min-width:260px">' + esc(a.name) + (a.hidden ? ' <span class="pill off">ซ่อน</span>' : '') + '</td><td>' + esc(a.unit) + '</td>' +
           '<td class="num">' + fmtNum(a.price, 2) + '</td><td>' + esc(catLabel(a.category)) + '</td><td>' + (a.frequent ? '★' : '') + '</td>' +
           (editable ? '<td class="row-actions"><button class="btn sm" type="button" data-act="asset-edit" data-id="' + esc(a.key) + '">แก้ไข</button></td>' : '') + '</tr>';
       });
@@ -947,12 +1102,14 @@
   }
   function openModal(title, bodyHtml, onSubmit, submitLabel) {
     const root = $('modal-root');
-    root.innerHTML = '<div class="modal-bg"><form class="modal" novalidate><h3>' + esc(title) + '</h3>' + bodyHtml +
-      '<div class="form-err"></div><div class="modal-actions"><button type="button" class="btn" data-close>ยกเลิก</button>' +
+    root.innerHTML = '<div class="modal-bg"><form class="modal" novalidate>' +
+      '<div class="modal-head"><h3>' + esc(title) + '</h3><button type="button" class="modal-x" data-close title="ปิด" aria-label="ปิด">×</button></div>' +
+      '<div class="modal-body">' + bodyHtml + '<div class="form-err"></div></div>' +
+      '<div class="modal-actions"><button type="button" class="btn" data-close>ยกเลิก</button>' +
       '<button type="submit" class="btn primary">' + esc(submitLabel || 'ตกลง') + '</button></div></form></div>';
     const form = root.querySelector('form');
     const close = function () { root.innerHTML = ''; };
-    root.querySelector('[data-close]').onclick = close;
+    root.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = close; });
     root.querySelector('.modal-bg').addEventListener('mousedown', function (e) { if (e.target === e.currentTarget) close(); });
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
