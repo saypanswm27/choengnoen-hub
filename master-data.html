@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ฐานข้อมูลกลาง | CN-Hub</title>
+<meta name="description" content="ฐานข้อมูลกลาง สายทาง เขตพื้นที่ และราคากลางทรัพย์สิน ที่ทุกระบบงานหมวดทางหลวงเชิงเนินใช้ร่วมกัน">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-layer.js"></script>
+<!--
+  หน้าจัดการฐานข้อมูลกลาง (ดูได้ทุกคน / แก้ไขได้เฉพาะเจ้าของเว็บ)
+  - แก้ไขแล้วยังไม่เขียนลงฐานข้อมูลทันที จะเก็บเป็น "ฉบับร่าง" จนกว่าจะกดบันทึก
+    บันทึก 1 ครั้ง = เขียน 1 เอกสาร + ประวัติ 1 รายการ (ย้อนดู/กู้คืนได้ที่แท็บประวัติ)
+  - ระบบงานอื่นอ่านข้อมูลชุดนี้ผ่าน master-client.js
+-->
+<style>
+  :root {
+    --navy: #16233F;
+    --orange: #E8722A;
+    --orange-soft: #FCE9D8;
+    --sand: #F4F6F9;
+    --ink: #333B4D;
+    --ink-light: #6B7285;
+    --white: #FFFFFF;
+    --line: #DDE3EB;
+    --paper-2: #EDF1F6;
+    --red: #C9302C;
+    --green: #1E8E4E;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--sand); color: var(--ink); font-family: 'Sarabun', sans-serif; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Kanit', sans-serif; }
+  button, input, select, textarea { font-family: inherit; font-size: 0.95rem; }
+
+  header.top { background: var(--navy); color: var(--white); padding: 18px 16px; }
+  .top-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .top-inner h1 { margin: 0; font-size: 1.4rem; font-weight: 600; }
+  .top-inner .sub { margin: 2px 0 0; color: #C9D2E3; font-size: 0.9rem; }
+  .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .top a, .top button.link { color: var(--white); text-decoration: none; border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; padding: 6px 12px; background: transparent; cursor: pointer; }
+  .top a:hover, .top button.link:hover { background: rgba(255,255,255,0.12); }
+  .who { font-size: 0.85rem; color: #C9D2E3; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 0.92rem; line-height: 1.5; }
+  .banner.info { background: var(--paper-2); border: 1px solid var(--line); }
+  .banner.warn { background: #FFF4D6; border: 1px solid #F0D48A; }
+  .banner.err { background: #FDE2E0; border: 1px solid #F2B1AC; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab { border: 1px solid var(--line); background: var(--white); border-radius: 999px; padding: 7px 14px; cursor: pointer; color: var(--ink); }
+  .tab.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+  .tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--orange); color: var(--white); font-size: 0.75rem; text-align: center; }
+
+  .panel { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .toolbar .grow { flex: 1 1 200px; }
+  .toolbar input[type=search], .toolbar select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); width: 100%; }
+  .meta { font-size: 0.82rem; color: var(--ink-light); margin: 0 0 8px; }
+
+  .btn { border: 1px solid var(--line); background: var(--white); color: var(--ink); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--orange); color: var(--orange); }
+  .btn.primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
+  .btn.primary:hover { background: #D5651E; color: var(--white); }
+  .btn.danger { color: var(--red); }
+  .btn.danger:hover { border-color: var(--red); }
+  .btn.sm { padding: 3px 8px; font-size: 0.82rem; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { background: var(--paper-2); font-family: 'Kanit', sans-serif; font-weight: 500; white-space: nowrap; position: sticky; top: 0; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.changed td { background: var(--orange-soft); }
+  tr.muted td { color: var(--ink-light); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.78rem; background: var(--paper-2); }
+  .pill.ok { background: #DDF3E6; color: var(--green); }
+  .pill.off { background: #EEE; color: #777; }
+  .row-actions { white-space: nowrap; }
+  .empty { padding: 24px; text-align: center; color: var(--ink-light); }
+
+  .savebar { position: sticky; bottom: 0; margin-top: 12px; background: var(--navy); color: var(--white); border-radius: 12px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 -4px 16px rgba(0,0,0,0.12); }
+  .savebar .grow { flex: 1 1 220px; font-size: 0.9rem; }
+  .savebar[hidden] { display: none; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow-y: auto; z-index: 50; }
+  .modal { background: var(--white); border-radius: 14px; width: 100%; max-width: 560px; padding: 18px; }
+  .modal h3 { margin: 0 0 12px; font-weight: 500; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--ink-light); }
+  label.f input, label.f select, label.f textarea { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--white); }
+  label.chk { display: flex; gap: 6px; align-items: center; font-size: 0.9rem; }
+  .hint { font-size: 0.78rem; color: var(--ink-light); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+  .form-err { color: var(--red); font-size: 0.88rem; margin-top: 8px; min-height: 1em; }
+
+  .hist-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .hist-item pre { white-space: pre-wrap; margin: 6px 0; font-family: inherit; font-size: 0.88rem; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--navy); color: var(--white); padding: 10px 16px; border-radius: 10px; z-index: 80; font-size: 0.92rem; max-width: calc(100% - 32px); }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .top-inner h1 { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div>
+        <h1>ฐานข้อมูลกลาง</h1>
+        <p class="sub">สายทาง · เขตพื้นที่ · ราคากลางทรัพย์สิน ที่ทุกระบบงานใช้ร่วมกัน</p>
+      </div>
+      <div class="top-actions">
+        <span class="who" id="who"></span>
+        <button class="link" id="btn-login" type="button">เข้าสู่ระบบเจ้าของ</button>
+        <a href="index.html">← กลับหน้าหลัก</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="banners"></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="view"></div>
+    <div class="savebar" id="savebar" hidden>
+      <div class="grow" id="savebar-text"></div>
+      <button class="btn" id="btn-discard" type="button">ยกเลิกการแก้ไข</button>
+      <button class="btn primary" id="btn-save" type="button">บันทึกลงฐานข้อมูลกลาง</button>
+    </div>
+  </main>
+  <div id="modal-root"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- ค่าคงที่ ---------- */
+  const CATEGORIES = [
+    { key: '', label: 'ไม่ระบุหมวด' },
+    { key: 'road', label: 'งานทาง' },
+    { key: 'safety', label: 'อุปกรณ์ความปลอดภัย' },
+    { key: 'guardrail', label: 'ราวกันอันตราย' },
+    { key: 'electric', label: 'ไฟฟ้าแสงสว่าง' }
+  ];
+  const SIDES = ['', 'ซ้ายทาง', 'ขวาทาง', 'ทั้งสองฝั่ง'];
+  const TABS = [
+    { key: 'routes', label: 'สายทาง' },
+    { key: 'zones', label: 'เขตพื้นที่' },
+    { key: 'rightofway', label: 'บัญชีเขตทาง' },
+    { key: 'surface', label: 'ผิวทาง' },
+    { key: 'assets', label: 'ราคากลางทรัพย์สิน' },
+    { key: 'io', label: 'นำเข้า / ส่งออก' },
+    { key: 'history', label: 'ประวัติการแก้ไข' }
+  ];
+
+  /* ---------- สถานะหน้าเว็บ ---------- */
+  const S = {
+    owner: false,
+    loaded: false,
+    master: {},         // docId → ข้อมูลในฐานข้อมูล
+    drafts: {},         // docId → { items, extra, changes: [] } ที่ยังไม่บันทึก
+    tab: 'routes',
+    fy: currentFiscalYear(),
+    assetSearch: '',
+    assetCat: '*',
+    rowHw: '*',
+    rowInArea: true,    // แสดงเฉพาะช่วงที่ทับกับสายทางที่หมวดดูแล
+    surfHw: '*',
+    history: null
+  };
+  try { const t = localStorage.getItem('cn_master_tab'); if (t && TABS.some(function (x) { return x.key === t; })) S.tab = t; } catch (_) {}
+
+  /* ---------- ตัวช่วยทั่วไป ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function num(v) { if (v === '' || v == null) return null; const n = Number(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; }
+  function fmtNum(v, d) { if (v == null || v === '') return '–'; return Number(v).toLocaleString('th-TH', { minimumFractionDigits: d || 0, maximumFractionDigits: d == null ? 3 : d }); }
+  function todayIso() { return new Date().toISOString().slice(0, 10); }
+  function fmtDateTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+  // ปีงบประมาณ (พ.ศ.) เริ่ม 1 ต.ค. ของปีก่อนหน้า
+  function currentFiscalYear(date) {
+    const d = date ? new Date(date) : new Date();
+    return d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0);
+  }
+  // กม. เก็บเป็นเมตร แสดงแบบ 223+650
+  function fmtKm(m) {
+    if (m == null || m === '') return '';
+    m = Math.round(Number(m) * 100) / 100;
+    const k = Math.floor(m / 1000);
+    const r = Math.round((m - k * 1000) * 100) / 100;
+    return k + '+' + (r % 1 === 0 ? String(r).padStart(3, '0') : r.toFixed(2).padStart(6, '0'));
+  }
+  function parseKm(text) {
+    const t = String(text || '').trim();
+    if (!t) return null;
+    let m = t.match(/^(\d+)\s*\+\s*(\d{1,3})(\.\d+)?$/);
+    if (m) return Math.round((Number(m[1]) * 1000 + Number(m[2].padEnd(3, '0')) + Number(m[3] || 0)) * 100) / 100;
+    if (/^\d+(\.\d+)?$/.test(t)) return Math.round(Number(t) * 100000) / 100; // พิมพ์เป็นกิโลเมตร เช่น 223.65
+    return NaN;
+  }
+  function fmtRanges(ranges) { return (ranges || []).map(function (r) { return fmtKm(r[0]) + ' – ' + fmtKm(r[1]); }).join(', '); }
+  function parseRanges(text) {
+    const parts = String(text || '').split(/[,;\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    return parts.map(function (p) {
+      const ab = p.split(/\s*[–—-]\s*(?=\d)/);
+      if (ab.length !== 2) return null;
+      const a = parseKm(ab[0]), b = parseKm(ab[1]);
+      if (a == null || b == null || isNaN(a) || isNaN(b) || a >= b) return null;
+      return [a, b];
+    });
+  }
+  function routeId(r) { return String(r.highway).trim() + '-' + (String(r.controlNo || '').trim() || '0000'); }
+  function catLabel(k) { const c = CATEGORIES.find(function (x) { return x.key === (k || ''); }); return c ? c.label : k; }
+  function assetDocId(fy) { return 'assets_' + fy; }
+
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast'; el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* ---------- อ่าน/แก้ฉบับร่าง ---------- */
+  function items(docId) {
+    if (S.drafts[docId]) return S.drafts[docId].items;
+    return (S.master[docId] && S.master[docId].items) || [];
+  }
+  function draft(docId, newItems, change, extra) {
+    const d = S.drafts[docId] || { items: null, extra: extra || {}, changes: [] };
+    d.items = newItems;
+    if (extra) d.extra = extra;
+    d.changes.push(change);
+    S.drafts[docId] = d;
+    render();
+  }
+  function changedIds(docId, key) {
+    // รายการที่ต่างจากฐานข้อมูล (ใช้ไฮไลต์แถว)
+    const out = new Set();
+    if (!S.drafts[docId]) return out;
+    const base = {};
+    ((S.master[docId] && S.master[docId].items) || []).forEach(function (x) { base[x[key]] = sameKey(x); });
+    S.drafts[docId].items.forEach(function (x) { if (base[x[key]] !== sameKey(x)) out.add(x[key]); });
+    return out;
+  }
+  // เทียบข้อมูลโดยไม่สนลำดับช่อง และถือว่า '' / null / ไม่มีช่อง เท่ากัน
+  function sameKey(x) {
+    return JSON.stringify(Object.keys(x).sort().filter(function (k) { return x[k] !== '' && x[k] != null; })
+      .map(function (k) { return [k, x[k]]; }));
+  }
+  function fiscalYears() {
+    const ys = new Set([S.fy, currentFiscalYear()]);
+    Object.keys(S.master).concat(Object.keys(S.drafts)).forEach(function (k) {
+      const m = k.match(/^assets_(\d{4})$/); if (m) ys.add(Number(m[1]));
+    });
+    return Array.from(ys).sort(function (a, b) { return b - a; });
+  }
+
+  /* ---------- วาดหน้า ---------- */
+  function render() {
+    renderBanners();
+    renderTabs();
+    const v = $('view');
+    if (!FBL.configured) { v.innerHTML = ''; return; }
+    if (!S.loaded) { v.innerHTML = '<div class="panel empty">กำลังโหลดข้อมูล…</div>'; return; }
+    if (S.tab === 'routes') renderRoutes(v);
+    else if (S.tab === 'zones') renderZones(v);
+    else if (S.tab === 'rightofway') renderRow(v);
+    else if (S.tab === 'surface') renderSurface(v);
+    else if (S.tab === 'assets') renderAssets(v);
+    else if (S.tab === 'io') renderIO(v);
+    else renderHistory(v);
+    renderSaveBar();
+  }
+
+  function renderBanners() {
+    let h = '';
+    if (!FBL.configured) h += '<div class="banner err">ยังไม่ได้ตั้งค่า Firebase ในไฟล์ <code>firebase-layer.js</code></div>';
+    if (S.loadError) h += '<div class="banner err">' + esc(S.loadError) + '</div>';
+    else if (!S.owner) h += '<div class="banner info">โหมดดูอย่างเดียว ข้อมูลในหน้านี้คือข้อมูลที่ทุกระบบงานใช้อยู่ ถ้าต้องการแก้ไข ให้กด "เข้าสู่ระบบเจ้าของ"</div>';
+    $('banners').innerHTML = h;
+    $('btn-login').textContent = S.owner ? 'ออกจากระบบ' : 'เข้าสู่ระบบเจ้าของ';
+    $('who').textContent = S.owner ? 'เจ้าของเว็บ (แก้ไขได้)' : '';
+  }
+
+  function renderTabs() {
+    $('tabs').innerHTML = TABS.map(function (t) {
+      let n = 0;
+      if (t.key === 'routes' && S.drafts.routes) n = 1;
+      if (t.key === 'zones' && S.drafts.zones) n = 1;
+      if (t.key === 'rightofway' && S.drafts.rightofway) n = 1;
+      if (t.key === 'surface' && S.drafts.surface) n = 1;
+      if (t.key === 'assets') n = Object.keys(S.drafts).filter(function (k) { return /^assets_/.test(k); }).length;
+      return '<button type="button" class="tab' + (S.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' + esc(t.label) +
+        (n ? '<span class="badge" title="มีการแก้ไขที่ยังไม่บันทึก">' + n + '</span>' : '') + '</button>';
+    }).join('');
+  }
+
+  function docMeta(docId) {
+    const m = S.master[docId];
+    if (!m) return 'ยังไม่มีข้อมูลในฐานข้อมูลกลาง';
+    return 'รุ่นที่ ' + m.version + ' · แก้ไขล่าสุด ' + fmtDateTime(m.updatedAt);
+  }
+
+  function renderSaveBar() {
+    const ids = Object.keys(S.drafts);
+    const bar = $('savebar');
+    bar.hidden = !ids.length;
+    if (!ids.length) return;
+    const n = ids.reduce(function (s, k) { return s + S.drafts[k].changes.length; }, 0);
+    $('savebar-text').textContent = 'มีการแก้ไข ' + n + ' รายการที่ยังไม่บันทึก (' + ids.map(docTitle).join(', ') + ') ระบบงานอื่นจะเห็นหลังจากกดบันทึก';
+  }
+  function docTitle(docId) {
+    if (docId === 'routes') return 'สายทาง';
+    if (docId === 'zones') return 'เขตพื้นที่';
+    if (docId === 'rightofway') return 'บัญชีเขตทาง';
+    if (docId === 'surface') return 'ผิวทาง';
+    const m = docId.match(/^assets_(\d{4})$/);
+    return m ? 'ราคากลางปีงบ ' + m[1] : docId;
+  }
+
+  /* ----- สายทาง ----- */
+  function renderRoutes(v) {
+    const list = items('routes').slice().sort(function (a, b) {
+      if ((a.status === 'transferred') !== (b.status === 'transferred')) return a.status === 'transferred' ? 1 : -1;
+      return Number(a.highway) - Number(b.highway) || String(a.controlNo).localeCompare(String(b.controlNo));
+    });
+    const changed = changedIds('routes', 'id');
+    let h = '<div class="panel">';
+    h += '<div class="toolbar"><div class="grow"><p class="meta" style="margin:0">' + esc(docMeta('routes')) + ' · ' + list.length + ' สายทาง</p></div>';
+    if (S.owner && items('surface').length) h += '<button class="btn" type="button" data-act="route-calc" title="คำนวณระยะเทียบ 2 ช่องจราจร / ลาดยาง / คอนกรีต จากแท็บผิวทาง">คำนวณจากข้อมูลผิวทาง</button>';
+    if (S.owner) h += '<button class="btn primary" type="button" data-act="route-add">+ เพิ่มสายทาง</button>';
+    h += '</div>';
+    if (!list.length) h += '<div class="empty">ยังไม่มีสายทาง นำเข้าข้อมูลตั้งต้นได้ที่แท็บ "นำเข้า / ส่งออก"</div>';
+    else {
+      h += '<div class="table-wrap"><table><thead><tr><th>ทางหลวง</th><th>ตอนควบคุม</th><th>ชื่อตอน</th><th>ช่วง กม.</th>' +
+        '<th class="num">ระยะจริง (กม.)</th><th class="num">ระยะ 2 ช่องจราจร</th><th class="num">ลาดยาง</th><th class="num">คอนกรีต</th><th class="num">ปริมาณงาน</th><th>สถานะ</th>' +
+        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (r) {
+        const cls = [changed.has(r.id) ? 'changed' : '', r.status === 'transferred' ? 'muted' : ''].join(' ');
+        h += '<tr class="' + cls + '"><td><b>' + esc(r.highway) + '</b></td><td>' + esc(r.controlNo) + '</td><td>' + esc(r.section) + '</td>' +
+          '<td>' + esc(fmtRanges(r.kmRanges)) + '</td>' +
+          '<td class="num">' + fmtNum(r.distanceActual) + '</td><td class="num">' + fmtNum(r.distance2Lane) + '</td>' +
+          '<td class="num">' + fmtNum(r.asphalt) + '</td><td class="num">' + fmtNum(r.concrete) + '</td><td class="num">' + fmtNum(r.workQty) + '</td>' +
+          '<td>' + (r.status === 'transferred' ? '<span class="pill off" title="' + esc(r.transferNote || '') + '">โอนแล้ว ' + esc(r.transferredDate || '') + '</span>' : '<span class="pill ok">ดูแลอยู่</span>') + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="route-edit" data-id="' + esc(r.id) + '">แก้ไข</button> ' +
+            '<button class="btn sm danger" type="button" data-act="route-del" data-id="' + esc(r.id) + '">ลบ</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+      h += '<p class="hint" style="margin-top:8px">ถ้าโอนสายทางให้หมวดอื่น แนะนำให้เปลี่ยนสถานะเป็น "โอนแล้ว" แทนการลบ เพื่อไม่ให้เคสเก่าที่อ้างถึงสายทางนี้เสีย</p>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function routeForm(r) {
+    const isNew = !r;
+    r = r || { status: 'active', kmRanges: [], asOf: todayIso() };
+    openModal((isNew ? 'เพิ่มสายทาง' : 'แก้ไขสายทาง ' + r.highway + ' ตอน ' + r.controlNo),
+      '<div class="form-grid">' +
+      field('highway', 'หมายเลขทางหลวง *', r.highway, 'text', isNew ? '' : 'readonly') +
+      field('controlNo', 'ตอนควบคุม *', r.controlNo, 'text', isNew ? '' : 'readonly') +
+      field('section', 'ชื่อตอน', r.section, 'text', '', 'full') +
+      field('kmRanges', 'ช่วง กม. ที่หมวดดูแล *', fmtRanges(r.kmRanges), 'text', 'placeholder="เช่น 2+346 – 3+292 (หลายช่วงคั่นด้วย ,)"', 'full') +
+      field('distanceActual', 'ระยะทางจริง (กม.)', r.distanceActual, 'number', 'step="0.001"') +
+      field('distance2Lane', 'ระยะเทียบ 2 ช่องจราจร (กม.)', r.distance2Lane, 'number', 'step="0.001"') +
+      field('asphalt', 'ผิวลาดยาง (กม.)', r.asphalt, 'number', 'step="0.001"') +
+      field('concrete', 'ผิวคอนกรีต (กม.)', r.concrete, 'number', 'step="0.001"') +
+      field('workQty', 'ปริมาณงาน', r.workQty, 'number', 'step="0.001"') +
+      field('asOf', 'ข้อมูล ณ วันที่', r.asOf, 'date') +
+      '<label class="f">สถานะ<select name="status"><option value="active"' + (r.status !== 'transferred' ? ' selected' : '') + '>ดูแลอยู่</option>' +
+        '<option value="transferred"' + (r.status === 'transferred' ? ' selected' : '') + '>โอนให้หน่วยงานอื่นแล้ว</option></select></label>' +
+      field('transferredDate', 'วันที่โอน', r.transferredDate, 'date') +
+      field('transferNote', 'หมายเหตุการโอน', r.transferNote, 'text', '', 'full') +
+      '</div><p class="hint">ช่วง กม. พิมพ์ได้ทั้งแบบ 223+650 หรือเป็นกิโลเมตร 223.65</p>',
+      function (f) {
+        const o = {
+          highway: f.highway.trim(), controlNo: f.controlNo.trim(), section: f.section.trim(),
+          kmRanges: parseRanges(f.kmRanges),
+          distanceActual: num(f.distanceActual), distance2Lane: num(f.distance2Lane),
+          asphalt: num(f.asphalt) || 0, concrete: num(f.concrete) || 0, workQty: num(f.workQty),
+          status: f.status, transferredDate: f.status === 'transferred' ? f.transferredDate : '',
+          transferNote: f.status === 'transferred' ? f.transferNote.trim() : '', asOf: f.asOf || ''
+        };
+        if (!o.highway || !o.controlNo) return 'กรุณาใส่หมายเลขทางหลวงและตอนควบคุม';
+        if (!o.kmRanges.length || o.kmRanges.some(function (x) { return !x; })) return 'ช่วง กม. ไม่ถูกต้อง (ต้องเป็น "เริ่ม – สิ้นสุด" และเริ่มน้อยกว่าสิ้นสุด)';
+        o.id = routeId(o);
+        const list = items('routes').slice();
+        if (isNew && list.some(function (x) { return x.id === o.id; })) return 'มีสายทาง ' + o.highway + ' ตอน ' + o.controlNo + ' อยู่แล้ว';
+        if (isNew) list.push(o); else list[list.findIndex(function (x) { return x.id === r.id; })] = o;
+        draft('routes', list, (isNew ? 'เพิ่ม' : 'แก้ไข') + 'สายทาง ' + o.highway + ' ตอน ' + o.controlNo);
+      });
+  }
+
+  /* ----- เขตพื้นที่ ----- */
+  function renderZones(v) {
+    const routes = items('routes');
+    const list = items('zones').slice().sort(function (a, b) {
+      return Number(a.highway) - Number(b.highway) || (a.kmStart - b.kmStart);
+    });
+    const changed = changedIds('zones', 'id');
+    let h = '<div class="panel">';
+    h += '<div class="toolbar"><div class="grow"><p class="meta" style="margin:0">' + esc(docMeta('zones')) + ' · ' + list.length + ' ช่วง</p></div>';
+    if (S.owner) h += '<button class="btn primary" type="button" data-act="zone-add"' + (routes.length ? '' : ' disabled title="เพิ่มสายทางก่อน"') + '>+ เพิ่มเขตพื้นที่</button>';
+    h += '</div>';
+    h += '<p class="hint">ใช้เติมข้อมูล สภ. / ตำบล / อำเภอ / จังหวัด อัตโนมัติเมื่อระบบงานบันทึกเคสตาม กม. ที่เกิดเหตุ</p>';
+    if (!list.length) h += '<div class="empty">ยังไม่มีเขตพื้นที่ (ระบบงานโจรกรรมและขออนุญาตมีข้อมูลชุดนี้อยู่ จะดึงมารวมตอนเชื่อมต่อระบบ)</div>';
+    else {
+      h += '<div class="table-wrap"><table><thead><tr><th>ทางหลวง</th><th>ช่วง กม.</th><th>ฝั่ง</th><th>สภ.</th><th>ตำบล</th><th>อำเภอ</th><th>จังหวัด</th><th>หมู่บ้าน</th>' +
+        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (z) {
+        h += '<tr class="' + (changed.has(z.id) ? 'changed' : '') + '"><td><b>' + esc(z.highway) + '</b>' + (z.routeId ? ' <span class="hint">' + esc(z.routeId) + '</span>' : '') + '</td>' +
+          '<td>' + esc(fmtKm(z.kmStart) + ' – ' + fmtKm(z.kmEnd)) + '</td><td>' + esc(z.side) + '</td><td>' + esc(z.station) + '</td>' +
+          '<td>' + esc(z.tambon) + '</td><td>' + esc(z.amphoe) + '</td><td>' + esc(z.changwat) + '</td><td>' + esc((z.moobans || []).join(', ')) + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="zone-edit" data-id="' + esc(z.id) + '">แก้ไข</button> ' +
+            '<button class="btn sm danger" type="button" data-act="zone-del" data-id="' + esc(z.id) + '">ลบ</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function zoneForm(z) {
+    const isNew = !z;
+    z = z || { changwat: 'ระยอง', moobans: [] };
+    const routes = items('routes');
+    openModal(isNew ? 'เพิ่มเขตพื้นที่' : 'แก้ไขเขตพื้นที่',
+      '<div class="form-grid">' +
+      '<label class="f full">สายทาง *<select name="routeId">' + routes.map(function (r) {
+        return '<option value="' + esc(r.id) + '"' + (r.id === z.routeId ? ' selected' : '') + '>ทล.' + esc(r.highway) + ' ตอน ' + esc(r.controlNo) + ' ' + esc(r.section) + '</option>';
+      }).join('') + '</select></label>' +
+      field('kmStart', 'จาก กม. *', fmtKm(z.kmStart), 'text', 'placeholder="เช่น 230+000"') +
+      field('kmEnd', 'ถึง กม. *', fmtKm(z.kmEnd), 'text', 'placeholder="เช่น 235+500"') +
+      '<label class="f">ฝั่ง<select name="side">' + SIDES.map(function (s) { return '<option value="' + esc(s) + '"' + (s === (z.side || '') ? ' selected' : '') + '>' + (s || 'ไม่ระบุ') + '</option>'; }).join('') + '</select></label>' +
+      field('station', 'สถานีตำรวจ (สภ.)', z.station) +
+      field('tambon', 'ตำบล', z.tambon) +
+      field('amphoe', 'อำเภอ', z.amphoe) +
+      field('changwat', 'จังหวัด', z.changwat) +
+      field('moobans', 'หมู่บ้าน (คั่นด้วย ,)', (z.moobans || []).join(', '), 'text', '', 'full') +
+      '</div>',
+      function (f) {
+        const r = routes.find(function (x) { return x.id === f.routeId; });
+        const o = {
+          id: z.id || ('z-' + Date.now().toString(36)),
+          routeId: f.routeId, highway: r ? r.highway : '',
+          kmStart: parseKm(f.kmStart), kmEnd: parseKm(f.kmEnd), side: f.side,
+          station: f.station.trim(), tambon: f.tambon.trim(), amphoe: f.amphoe.trim(), changwat: f.changwat.trim(),
+          moobans: f.moobans.split(/[,;]+/).map(function (s) { return s.trim(); }).filter(Boolean)
+        };
+        if (o.kmStart == null || o.kmEnd == null || isNaN(o.kmStart) || isNaN(o.kmEnd) || o.kmStart >= o.kmEnd) return 'ช่วง กม. ไม่ถูกต้อง';
+        const list = items('zones').slice();
+        if (isNew) list.push(o); else list[list.findIndex(function (x) { return x.id === z.id; })] = o;
+        draft('zones', list, (isNew ? 'เพิ่ม' : 'แก้ไข') + 'เขตพื้นที่ ทล.' + o.highway + ' ' + fmtKm(o.kmStart) + '–' + fmtKm(o.kmEnd));
+      });
+  }
+
+  /* ----- บัญชีเขตทาง (ความกว้างเขตทางจากศูนย์กลางทาง ซ้าย/ขวา) ----- */
+  function rowInArea(x) {
+    return items('routes').some(function (r) {
+      return r.status !== 'transferred' && String(r.highway) === String(x.highway) && (r.kmRanges || []).some(function (p) {
+        return x.kmStart <= p[1] && x.kmEnd >= p[0];
+      });
+    });
+  }
+  function fmtW(v) { return v == null ? '–' : Number(v).toFixed(2); }
+
+  function renderRow(v) {
+    const all = items('rightofway');
+    const hws = Array.from(new Set(all.map(function (x) { return String(x.highway); }))).sort(function (a, b) { return Number(a) - Number(b); });
+    const areaFilter = S.rowInArea && items('routes').length > 0; // ยังไม่มีสายทาง = กรองไม่ได้ แสดงทั้งหมด
+    const list = all.filter(function (x) {
+      if (S.rowHw !== '*' && String(x.highway) !== S.rowHw) return false;
+      return !areaFilter || rowInArea(x);
+    }).sort(function (a, b) {
+      return Number(a.highway) - Number(b.highway) || String(a.controlNo).localeCompare(String(b.controlNo)) || (a.seq - b.seq);
+    });
+    const changed = changedIds('rightofway', 'id');
+    let h = '<div class="panel"><div class="toolbar">' +
+      '<select id="row-hw" style="width:auto"><option value="*">ทุกสายทาง</option>' + hws.map(function (x) {
+        return '<option value="' + esc(x) + '"' + (S.rowHw === x ? ' selected' : '') + '>ทล.' + esc(x) + '</option>';
+      }).join('') + '</select>' +
+      '<label class="chk"><input type="checkbox" id="row-area"' + (S.rowInArea ? ' checked' : '') + '> เฉพาะช่วงที่หมวดดูแล</label>' +
+      '<div class="grow"></div>';
+    if (S.owner) h += '<button class="btn primary" type="button" data-act="row-add">+ เพิ่มช่วง</button>';
+    h += '</div><p class="meta">' + esc(docMeta('rightofway')) + ' · ทั้งหมด ' + all.length + ' ช่วง' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
+    h += '<p class="hint">ความกว้างวัดจากศูนย์กลางทางไปแต่ละฝั่ง (เมตร) ใช้ในงานระวังชี้แนวเขตที่ดิน งานขออนุญาตในเขตทาง และงานรุกล้ำเขตทาง</p>';
+    if (!list.length) h += '<div class="empty">' + (all.length ? 'ไม่มีช่วงที่ตรงกับตัวกรอง' : 'ยังไม่มีบัญชีเขตทาง นำเข้าไฟล์ rightofway-seed.json ได้ที่แท็บ "นำเข้า / ส่งออก"') + '</div>';
+    else {
+      h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>ทางหลวง</th><th>ตอน</th><th class="num">ลำดับ</th><th>ช่วง กม.</th>' +
+        '<th class="num">ซ้ายทาง (ม.)</th><th class="num">ขวาทาง (ม.)</th><th>หลักฐานกรรมสิทธิ์</th><th>หมายเหตุ</th>' + (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (x) {
+        const warn = /^ตรวจสอบ/.test(x.note || '');
+        h += '<tr class="' + (changed.has(x.id) ? 'changed' : '') + '"><td><b>' + esc(x.highway) + '</b></td><td>' + esc(x.controlNo) + '</td><td class="num">' + esc(x.seq) + '</td>' +
+          '<td style="white-space:nowrap">' + esc(x.kmStart === x.kmEnd ? fmtKm(x.kmStart) : fmtKm(x.kmStart) + ' – ' + fmtKm(x.kmEnd)) + '</td>' +
+          '<td class="num">' + fmtW(x.left) + '</td><td class="num">' + fmtW(x.right) + '</td>' +
+          '<td>' + esc(x.basis) + '</td><td' + (warn ? ' style="color:var(--red)"' : '') + '>' + (warn ? '⚠ ' : '') + esc(x.note) + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="row-edit" data-id="' + esc(x.id) + '">แก้ไข</button> ' +
+            '<button class="btn sm danger" type="button" data-act="row-del" data-id="' + esc(x.id) + '">ลบ</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function rowForm(x) {
+    const isNew = !x;
+    if (!x) {
+      const hw = S.rowHw !== '*' ? S.rowHw : '';
+      const same = items('rightofway').filter(function (r) { return String(r.highway) === hw; });
+      x = { highway: hw, controlNo: same.length ? same[same.length - 1].controlNo : '', seq: same.length + 1, basis: same.length ? same[same.length - 1].basis : '' };
+    }
+    openModal(isNew ? 'เพิ่มช่วงเขตทาง' : 'แก้ไขช่วงเขตทาง ทล.' + x.highway + ' ลำดับ ' + x.seq,
+      '<div class="form-grid">' +
+      field('highway', 'หมายเลขทางหลวง *', x.highway, 'text', isNew ? '' : 'readonly') +
+      field('controlNo', 'ตอนควบคุม', x.controlNo, 'text', isNew ? '' : 'readonly') +
+      field('seq', 'ลำดับที่ในบัญชี *', x.seq, 'number', 'min="1"' + (isNew ? '' : ' readonly')) +
+      field('section', 'ชื่อตอน', x.section) +
+      field('kmStart', 'จาก กม. *', fmtKm(x.kmStart), 'text', 'placeholder="เช่น 222+076.50"') +
+      field('kmEnd', 'ถึง กม. *', fmtKm(x.kmEnd), 'text') +
+      field('left', 'ซ้ายทาง กว้าง (ม.)', x.left, 'number', 'step="0.01" min="0"') +
+      field('right', 'ขวาทาง กว้าง (ม.)', x.right, 'number', 'step="0.01" min="0"') +
+      field('basis', 'หลักฐานกรรมสิทธิ์', x.basis, 'text', '', 'full') +
+      field('note', 'หมายเหตุ', x.note, 'text', '', 'full') +
+      '</div><p class="hint">ความกว้างวัดจากศูนย์กลางทาง เว้นว่างได้ถ้าในบัญชีไม่ได้ระบุ</p>',
+      function (f) {
+        const o = {
+          highway: f.highway.trim(), controlNo: f.controlNo.trim(), seq: Number(f.seq), section: f.section.trim(),
+          kmStart: parseKm(f.kmStart), kmEnd: parseKm(f.kmEnd), left: num(f.left), right: num(f.right),
+          basis: f.basis.trim(), note: f.note.trim(), source: x.source || 'แก้ไขในฐานข้อมูลกลาง'
+        };
+        if (!o.highway || !(o.seq >= 1)) return 'กรุณาใส่หมายเลขทางหลวงและลำดับที่';
+        if (o.kmStart == null || o.kmEnd == null || isNaN(o.kmStart) || isNaN(o.kmEnd) || o.kmStart > o.kmEnd) return 'ช่วง กม. ไม่ถูกต้อง';
+        o.id = o.highway + '-' + (o.controlNo || '0000') + '-' + String(o.seq).padStart(3, '0');
+        const list = items('rightofway').slice();
+        if (isNew && list.some(function (r) { return r.id === o.id; })) return 'มีลำดับที่ ' + o.seq + ' ของทางหลวงสายนี้อยู่แล้ว';
+        if (isNew) list.push(o); else list[list.findIndex(function (r) { return r.id === x.id; })] = o;
+        draft('rightofway', list, (isNew ? 'เพิ่ม' : 'แก้ไข') + 'เขตทาง ทล.' + o.highway + ' ลำดับ ' + o.seq + ' (' + fmtKm(o.kmStart) + '–' + fmtKm(o.kmEnd) + ' ซ้าย ' + fmtW(o.left) + ' ขวา ' + fmtW(o.right) + ')');
+      });
+  }
+
+  /* ----- ผิวทาง (ลักษณะผิวทางรายช่วง แยกซ้าย/ขวาทาง) ----- */
+  const SURF = { ac: 'ลาดยาง (AC)', conc: 'คอนกรีต', '': 'ไม่ระบุ' };
+  const SIDE_TH = { Lt: 'ซ้ายทาง', Rt: 'ขวาทาง' };
+
+  function renderSurface(v) {
+    const all = items('surface');
+    const hws = Array.from(new Set(all.map(function (x) { return String(x.highway); }))).sort(function (a, b) { return Number(a) - Number(b); });
+    const list = all.filter(function (x) { return S.surfHw === '*' || String(x.highway) === S.surfHw; })
+      .sort(function (a, b) { return Number(a.highway) - Number(b.highway) || a.kmStart - b.kmStart || String(a.side).localeCompare(String(b.side)); });
+    const changed = changedIds('surface', 'id');
+    let h = '<div class="panel"><div class="toolbar">' +
+      '<select id="surf-hw" style="width:auto"><option value="*">ทุกสายทาง</option>' + hws.map(function (x) {
+        return '<option value="' + esc(x) + '"' + (S.surfHw === x ? ' selected' : '') + '>ทล.' + esc(x) + '</option>';
+      }).join('') + '</select><div class="grow"></div>';
+    if (S.owner) h += '<button class="btn primary" type="button" data-act="surf-add">+ เพิ่มช่วง</button>';
+    h += '</div><p class="meta">' + esc(docMeta('surface')) + ' · ทั้งหมด ' + all.length + ' แถว' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
+    h += '<p class="hint">จำนวนช่องจราจรนับต่อทิศทาง (แต่ละช่วงมีแถวซ้ายทางและขวาทาง) ใช้คำนวณระยะเทียบ 2 ช่องจราจร / ลาดยาง / คอนกรีต ของสายทางได้ที่แท็บ "สายทาง"</p>';
+    if (!list.length) h += '<div class="empty">ยังไม่มีข้อมูลผิวทาง นำเข้าไฟล์ surface-seed.json ได้ที่แท็บ "นำเข้า / ส่งออก"</div>';
+    else {
+      h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>ทางหลวง</th><th>ตอน</th><th>ช่วง กม.</th><th class="num">ระยะ (กม.)</th><th>ทิศทาง</th>' +
+        '<th class="num">ช่องจราจร</th><th class="num">กว้าง/ช่อง (ม.)</th><th>ผิวทาง</th><th class="num">ไหล่ซ้าย (ม.)</th><th class="num">ไหล่ขวา (ม.)</th><th>ข้อมูล ณ</th>' +
+        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (x) {
+        h += '<tr class="' + (changed.has(x.id) ? 'changed' : '') + '"><td><b>' + esc(x.highway) + '</b></td><td>' + esc(x.controlNo) + '</td>' +
+          '<td style="white-space:nowrap">' + esc(fmtKm(x.kmStart) + ' – ' + fmtKm(x.kmEnd)) + '</td><td class="num">' + fmtNum((x.kmEnd - x.kmStart) / 1000) + '</td>' +
+          '<td>' + esc(SIDE_TH[x.side] || x.side) + '</td><td class="num">' + esc(x.lanes) + '</td><td class="num">' + fmtW(x.laneWidth) + '</td>' +
+          '<td>' + (x.surface === 'conc' ? '<span class="pill">คอนกรีต</span>' : esc(SURF[x.surface || ''])) + '</td>' +
+          '<td class="num">' + fmtW(x.shoulderLeftWidth) + '</td><td class="num">' + fmtW(x.shoulderRightWidth) + '</td><td>' + esc(x.asOf) + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="surf-edit" data-id="' + esc(x.id) + '">แก้ไข</button> ' +
+            '<button class="btn sm danger" type="button" data-act="surf-del" data-id="' + esc(x.id) + '">ลบ</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function surfaceForm(x) {
+    const isNew = !x;
+    if (!x) {
+      const r = items('routes').find(function (r) { return S.surfHw !== '*' && String(r.highway) === S.surfHw; });
+      x = { highway: r ? r.highway : '', controlNo: r ? r.controlNo : '', side: 'Lt', lanes: 1, laneWidth: 3.5, surface: 'ac', shoulderLeftWidth: 2.5, shoulderRightWidth: 2.5, asOf: todayIso() };
+    }
+    openModal(isNew ? 'เพิ่มช่วงผิวทาง' : 'แก้ไขช่วงผิวทาง ทล.' + x.highway + ' ' + fmtKm(x.kmStart) + ' (' + (SIDE_TH[x.side] || x.side) + ')',
+      '<div class="form-grid">' +
+      field('highway', 'หมายเลขทางหลวง *', x.highway) +
+      field('controlNo', 'ตอนควบคุม', x.controlNo) +
+      field('kmStart', 'จาก กม. *', fmtKm(x.kmStart)) +
+      field('kmEnd', 'ถึง กม. *', fmtKm(x.kmEnd)) +
+      '<label class="f">ทิศทาง<select name="side">' + ['Lt', 'Rt'].map(function (s) { return '<option value="' + s + '"' + (x.side === s ? ' selected' : '') + '>' + SIDE_TH[s] + '</option>'; }).join('') + '</select></label>' +
+      field('lanes', 'จำนวนช่องจราจร (ทิศทางนี้) *', x.lanes, 'number', 'min="1" step="1"') +
+      field('laneWidth', 'ความกว้างต่อช่อง (ม.)', x.laneWidth, 'number', 'step="0.01" min="0"') +
+      '<label class="f">ผิวทาง<select name="surface">' + ['ac', 'conc', ''].map(function (s) { return '<option value="' + s + '"' + ((x.surface || '') === s ? ' selected' : '') + '>' + SURF[s] + '</option>'; }).join('') + '</select></label>' +
+      field('shoulderLeftWidth', 'ไหล่ทางซ้าย กว้าง (ม.)', x.shoulderLeftWidth, 'number', 'step="0.01" min="0"') +
+      field('shoulderRightWidth', 'ไหล่ทางขวา กว้าง (ม.)', x.shoulderRightWidth, 'number', 'step="0.01" min="0"') +
+      field('standard', 'มาตรฐานชั้นทาง (รหัส)', x.standard, 'number') +
+      field('asOf', 'ข้อมูล ณ วันที่', x.asOf, 'date') +
+      '</div><p class="hint">ถ้าทั้งสองทิศทางเหมือนกัน ต้องมี 2 แถว (ซ้ายทางและขวาทาง) ตามรูปแบบไฟล์ลักษณะผิวทาง</p>',
+      function (f) {
+        const o = {
+          highway: f.highway.trim(), controlNo: f.controlNo.trim(), kmStart: parseKm(f.kmStart), kmEnd: parseKm(f.kmEnd), side: f.side,
+          lanes: Number(f.lanes), laneWidth: num(f.laneWidth), surface: f.surface, standard: num(f.standard), roadType: x.roadType == null ? null : x.roadType,
+          shoulderLeftWidth: num(f.shoulderLeftWidth), shoulderRightWidth: num(f.shoulderRightWidth), asOf: f.asOf, source: x.source || 'แก้ไขในฐานข้อมูลกลาง'
+        };
+        if (!o.highway || !(o.lanes >= 1)) return 'กรุณาใส่หมายเลขทางหลวงและจำนวนช่องจราจร';
+        if (o.kmStart == null || o.kmEnd == null || isNaN(o.kmStart) || isNaN(o.kmEnd) || o.kmStart >= o.kmEnd) return 'ช่วง กม. ไม่ถูกต้อง';
+        o.id = o.highway + '-' + o.controlNo + '-' + o.kmStart + '-' + o.side;
+        const list = items('surface').slice();
+        const clash = list.find(function (r) { return r.id !== x.id && String(r.highway) === o.highway && r.side === o.side && o.kmStart < r.kmEnd && o.kmEnd > r.kmStart; });
+        if (clash) return 'ช่วงนี้ทับกับช่วง ' + fmtKm(clash.kmStart) + ' – ' + fmtKm(clash.kmEnd) + ' (' + SIDE_TH[clash.side] + ') ที่มีอยู่แล้ว';
+        if (isNew) list.push(o); else list[list.findIndex(function (r) { return r.id === x.id; })] = o;
+        draft('surface', list, (isNew ? 'เพิ่ม' : 'แก้ไข') + 'ผิวทาง ทล.' + o.highway + ' ' + fmtKm(o.kmStart) + '–' + fmtKm(o.kmEnd) + ' ' + SIDE_TH[o.side] + ' ' + o.lanes + ' ช่อง ' + SURF[o.surface]);
+      });
+  }
+
+  // สถิติสายทางจากข้อมูลผิวทาง: ระยะเทียบ 2 ช่องจราจร = Σ ระยะ × (ช่องซ้าย + ช่องขวา) / 2
+  function r3(n) { return Math.round(n * 1000) / 1000; }
+  function surfaceStats(route) {
+    const rows = items('surface').filter(function (x) {
+      return String(x.highway) === String(route.highway) && (!x.controlNo || !route.controlNo || x.controlNo === route.controlNo);
+    });
+    if (!rows.length) return null;
+    const segs = {}, lk = { ac: 0, conc: 0, '': 0 };
+    let asOf = '';
+    rows.forEach(function (x) {
+      const len = (x.kmEnd - x.kmStart) / 1000;
+      segs[x.kmStart + '-' + x.kmEnd] = len;
+      lk[x.surface || ''] += len * x.lanes;
+      if ((x.asOf || '') > asOf) asOf = x.asOf;
+    });
+    const actual = Object.keys(segs).reduce(function (s, k) { return s + segs[k]; }, 0);
+    return { distanceActual: r3(actual), distance2Lane: r3((lk.ac + lk.conc + lk['']) / 2), asphalt: r3(lk.ac / 2), concrete: r3(lk.conc / 2), unknown: r3(lk[''] / 2), asOf: asOf };
+  }
+
+  function routeStatsForm() {
+    const routes = items('routes');
+    const rows = routes.map(function (r) { return { r: r, s: surfaceStats(r) }; }).filter(function (x) { return x.s; });
+    if (!rows.length) { alert('ยังไม่มีข้อมูลผิวทางของสายทางใดเลย'); return; }
+    const F = [['distanceActual', 'ระยะจริง'], ['distance2Lane', '2 ช่องจราจร'], ['asphalt', 'ลาดยาง'], ['concrete', 'คอนกรีต']];
+    let t = '<div class="table-wrap"><table><thead><tr><th></th><th>ทล.</th>' + F.map(function (f) { return '<th class="num">' + f[1] + '<br><span class="hint">ใหม่ / เดิม</span></th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function (x) {
+      const diff = F.some(function (f) { return r3(x.r[f[0]] || 0) !== x.s[f[0]]; });
+      t += '<tr' + (diff ? ' class="changed"' : '') + '><td><input type="checkbox" name="r_' + esc(x.r.id) + '"' + (diff ? ' checked' : ' disabled') + '></td><td><b>' + esc(x.r.highway) + '</b> ' + esc(x.r.controlNo) + '</td>' +
+        F.map(function (f) {
+          const same = r3(x.r[f[0]] || 0) === x.s[f[0]];
+          return '<td class="num"' + (same ? '' : ' style="font-weight:600"') + '>' + fmtNum(x.s[f[0]]) + ' / ' + fmtNum(x.r[f[0]]) + '</td>';
+        }).join('') + '</tr>';
+      if (r3(x.s.distanceActual) !== r3(x.r.distanceActual || 0)) t += '<tr><td></td><td colspan="5" class="hint" style="color:var(--red)">⚠ ระยะจริงจากข้อมูลผิวทางไม่ตรงกับสายทาง ตรวจว่าข้อมูลผิวทางครบทุกช่วงหรือไม่</td></tr>';
+      if (x.s.unknown) t += '<tr><td></td><td colspan="5" class="hint">มีช่วงที่ไม่ระบุชนิดผิว ' + fmtNum(x.s.unknown) + ' กม. (นับรวมใน 2 ช่องจราจร)</td></tr>';
+    });
+    t += '</tbody></table></div>';
+    openModal('คำนวณสถิติสายทางจากข้อมูลผิวทาง', t +
+      '<p class="hint">แถวสีส้ม = ตัวเลขต่างจากที่บันทึกไว้ ติ๊กเลือกสายทางที่ต้องการอัปเดต (ปริมาณงานไม่ถูกแก้ เพราะยังไม่มีสูตรคำนวณ)</p>',
+      function (f) {
+        const list = items('routes').map(function (r) { return Object.assign({}, r); });
+        const done = [];
+        rows.forEach(function (x) {
+          if (!f['r_' + x.r.id]) return;
+          const o = list.find(function (r) { return r.id === x.r.id; });
+          F.forEach(function (k) { o[k[0]] = x.s[k[0]]; });
+          if (x.s.asOf) o.asOf = x.s.asOf;
+          done.push(o.highway + (o.controlNo ? ' ตอน ' + o.controlNo : ''));
+        });
+        if (!done.length) return 'ยังไม่ได้เลือกสายทาง';
+        draft('routes', list, 'คำนวณสถิติจากข้อมูลผิวทาง: ' + done.join(', '));
+      }, 'อัปเดตสายทางที่เลือก');
+    document.querySelector('#modal-root .modal').style.maxWidth = '760px';
+  }
+
+  /* ----- ราคากลางทรัพย์สิน ----- */
+  function renderAssets(v) {
+    const docId = assetDocId(S.fy);
+    const all = items(docId);
+    const q = S.assetSearch.trim().toLowerCase();
+    const list = all.filter(function (a) {
+      if (S.assetCat !== '*' && (a.category || '') !== S.assetCat) return false;
+      return !q || (a.name + ' ' + a.key).toLowerCase().indexOf(q) >= 0;
+    });
+    const changed = changedIds(docId, 'key');
+    const years = fiscalYears();
+    let h = '<div class="panel"><div class="toolbar">' +
+      '<label>ปีงบประมาณ <select id="fy-select" style="width:auto">' + years.map(function (y) {
+        return '<option value="' + y + '"' + (y === S.fy ? ' selected' : '') + '>' + y + (y === currentFiscalYear() ? ' (ปัจจุบัน)' : '') + '</option>';
+      }).join('') + '</select></label>' +
+      '<div class="grow"><input type="search" id="asset-search" placeholder="ค้นหาชื่อหรือรหัส…" value="' + esc(S.assetSearch) + '"></div>' +
+      '<select id="asset-cat" style="width:auto"><option value="*">ทุกหมวด</option>' + CATEGORIES.map(function (c) {
+        return '<option value="' + c.key + '"' + (S.assetCat === c.key ? ' selected' : '') + '>' + esc(c.label) + '</option>';
+      }).join('') + '</select>';
+    if (S.owner) {
+      h += '<button class="btn" type="button" data-act="fy-new">+ สร้างปีงบใหม่</button>';
+      h += '<button class="btn primary" type="button" data-act="asset-add">+ เพิ่มรายการ</button>';
+    }
+    h += '</div><p class="meta">' + esc(docMeta(docId)) + ' · ทั้งหมด ' + all.length + ' รายการ' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
+    if (!all.length) h += '<div class="empty">ยังไม่มีราคากลางของปีงบ ' + S.fy + (S.owner ? ' กด "สร้างปีงบใหม่" เพื่อคัดลอกจากปีก่อน หรือนำเข้าที่แท็บ "นำเข้า / ส่งออก"' : '') + '</div>';
+    else {
+      h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>รหัส</th><th>รายการ</th><th>หน่วย</th><th class="num">ราคา (บาท)</th><th>หมวด</th><th>ใช้บ่อย</th>' +
+        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (a) {
+        const cls = [changed.has(a.key) ? 'changed' : '', a.hidden ? 'muted' : ''].join(' ');
+        h += '<tr class="' + cls + '"><td>' + esc(a.key) + '</td><td>' + esc(a.name) + (a.hidden ? ' <span class="pill off">ซ่อน</span>' : '') + '</td><td>' + esc(a.unit) + '</td>' +
+          '<td class="num">' + fmtNum(a.price, 2) + '</td><td>' + esc(catLabel(a.category)) + '</td><td>' + (a.frequent ? '★' : '') + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="asset-edit" data-id="' + esc(a.key) + '">แก้ไข</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+      h += '<p class="hint" style="margin-top:8px">ราคาแยกตามปีงบประมาณ (เริ่ม 1 ต.ค.) ระบบงานจะใช้ราคาของปีงบตามวันที่เกิดเหตุ ถ้าเลิกใช้รายการใด ให้ติ๊ก "ซ่อน" แทนการลบ เพื่อให้เคสเก่ายังอ้างถึงได้</p>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function nextAssetKey() {
+    let max = 0;
+    fiscalYears().forEach(function (y) {
+      items(assetDocId(y)).forEach(function (a) { const m = String(a.key).match(/^mat-(\d+)$/); if (m) max = Math.max(max, Number(m[1])); });
+    });
+    return 'mat-' + String(max + 1).padStart(3, '0');
+  }
+
+  function assetForm(a) {
+    const isNew = !a;
+    const docId = assetDocId(S.fy);
+    a = a || { key: nextAssetKey(), category: '', frequent: false, hidden: false };
+    openModal((isNew ? 'เพิ่มรายการราคากลาง' : 'แก้ไขราคากลาง') + ' ปีงบ ' + S.fy,
+      '<div class="form-grid">' +
+      field('key', 'รหัส', a.key, 'text', 'readonly') +
+      '<label class="f">หมวด<select name="category">' + CATEGORIES.map(function (c) { return '<option value="' + c.key + '"' + (c.key === (a.category || '') ? ' selected' : '') + '>' + esc(c.label) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f full">ชื่อรายการ *<textarea name="name" rows="3">' + esc(a.name) + '</textarea></label>' +
+      field('unit', 'หน่วย *', a.unit) +
+      field('price', 'ราคา (บาท) *', a.price, 'number', 'step="0.01" min="0"') +
+      '<label class="chk"><input type="checkbox" name="frequent"' + (a.frequent ? ' checked' : '') + '> ใช้บ่อย (แสดงก่อน)</label>' +
+      '<label class="chk"><input type="checkbox" name="hidden"' + (a.hidden ? ' checked' : '') + '> ซ่อน (เลิกใช้)</label>' +
+      '</div><p class="hint">รหัสใช้อ้างอิงรายการเดียวกันทุกปีงบ แก้ราคาที่นี่จะมีผลเฉพาะปีงบ ' + S.fy + '</p>',
+      function (f) {
+        const o = { key: a.key, name: f.name.trim(), unit: f.unit.trim(), price: num(f.price), category: f.category, frequent: !!f.frequent, hidden: !!f.hidden };
+        if (!o.name || !o.unit || o.price == null || o.price < 0) return 'กรุณาใส่ชื่อ หน่วย และราคาให้ครบ';
+        const list = items(docId).slice();
+        if (isNew) list.push(o); else list[list.findIndex(function (x) { return x.key === a.key; })] = o;
+        let msg = (isNew ? 'เพิ่ม ' : 'แก้ไข ') + o.key + ' ' + o.name.slice(0, 40);
+        if (!isNew && a.price !== o.price) msg += ' (ราคา ' + fmtNum(a.price, 2) + ' → ' + fmtNum(o.price, 2) + ')';
+        draft(docId, list, msg, { fiscalYear: S.fy });
+      });
+  }
+
+  function newFiscalYearForm() {
+    const years = fiscalYears();
+    const withData = years.filter(function (y) { return items(assetDocId(y)).length; });
+    const suggest = Math.max.apply(null, years) + (items(assetDocId(Math.max.apply(null, years))).length ? 1 : 0);
+    openModal('สร้างราคากลางปีงบใหม่',
+      '<div class="form-grid">' +
+      field('fy', 'ปีงบประมาณใหม่ (พ.ศ.)', suggest, 'number', 'min="2560" max="2700"') +
+      '<label class="f">คัดลอกรายการและราคาจากปี<select name="from"><option value="">ไม่คัดลอก (เริ่มว่าง)</option>' +
+        withData.map(function (y) { return '<option value="' + y + '"' + (y === withData[0] ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label>' +
+      field('pct', 'ปรับราคาทุกรายการ (%)', 0, 'number', 'step="0.1"') +
+      '</div><p class="hint">คัดลอกแล้วค่อยแก้ราคารายการที่เปลี่ยนได้ ราคาปีเก่ายังอยู่ครบ ไม่ถูกแก้</p>',
+      function (f) {
+        const fy = Number(f.fy);
+        if (!(fy >= 2560 && fy <= 2700)) return 'ปีงบประมาณไม่ถูกต้อง';
+        if (items(assetDocId(fy)).length) return 'ปีงบ ' + fy + ' มีข้อมูลอยู่แล้ว';
+        const pct = num(f.pct) || 0;
+        const src = f.from ? clone(items(assetDocId(Number(f.from)))) : [];
+        src.forEach(function (a) { if (pct) a.price = Math.round(a.price * (1 + pct / 100) * 100) / 100; });
+        S.fy = fy;
+        draft(assetDocId(fy), src, 'สร้างปีงบ ' + fy + (f.from ? ' คัดลอกจากปี ' + f.from + ' (' + src.length + ' รายการ' + (pct ? ', ปรับราคา ' + pct + '%' : '') + ')' : ' (ว่าง)'), { fiscalYear: fy });
+      });
+  }
+
+  /* ----- นำเข้า / ส่งออก ----- */
+  function renderIO(v) {
+    let h = '<div class="panel">';
+    h += '<h3 style="margin-top:0;font-weight:500">ส่งออก (สำรองข้อมูล)</h3>' +
+      '<p class="hint">ดาวน์โหลดข้อมูลกลางทั้งหมดเป็นไฟล์ JSON เก็บไว้เป็นสำรอง หรือใช้นำเข้ากลับภายหลัง</p>' +
+      '<button class="btn" type="button" data-act="export">ดาวน์โหลดไฟล์สำรอง (.json)</button>';
+    if (S.owner) {
+      h += '<hr style="border:none;border-top:1px solid var(--line);margin:18px 0">' +
+        '<h3 style="font-weight:500">นำเข้าข้อมูล</h3>' +
+        '<p class="hint">รองรับไฟล์: <b>master-seed.json</b> (สายทาง + ราคากลาง จากระบบงานโจรกรรม) · <b>rightofway-seed.json</b> (บัญชีเขตทาง 19.3.67) · <b>surface-seed.json</b> (ลักษณะผิวทาง 19.8.69) · ไฟล์สำรองของหน้านี้ · ไฟล์เขตพื้นที่ที่ส่งออกจากระบบงาน<br>' +
+        'ข้อมูลที่นำเข้าจะเป็นฉบับร่างก่อน ตรวจดูในแต่ละแท็บแล้วค่อยกดบันทึก</p>' +
+        '<div class="form-grid" style="max-width:640px">' +
+        '<label class="f">ราคากลางในไฟล์ ให้เป็นของปีงบ<input type="number" id="imp-fy" value="' + currentFiscalYear() + '" min="2560" max="2700"></label>' +
+        '<label class="f">ถ้ารหัสซ้ำกับที่มีอยู่<select id="imp-mode"><option value="skip">ข้าม (เก็บของเดิม)</option><option value="replace">ใช้ข้อมูลจากไฟล์ทับ</option></select></label>' +
+        '<label class="f full">เลือกไฟล์ JSON<input type="file" id="imp-file" accept=".json,application/json"></label>' +
+        '</div><div id="imp-result" class="meta" style="margin-top:10px"></div>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function normRoute(r) {
+    // รองรับทั้งรูปแบบระบบอุบัติเหตุ/โจรกรรม (กม. เป็นเมตร) และระบบบริหารหมวด (routeNo, ranges เป็นกิโลเมตร)
+    const isAdmin = r.routeNo != null && r.highway == null;
+    const o = {
+      highway: String(isAdmin ? r.routeNo : r.highway).trim(),
+      controlNo: String(r.controlNo || '').trim(),
+      section: String(r.section || r.sectionName || '').replace(/\s*-\s*/g, '-').trim(),
+      kmRanges: (function () {
+        let k = isAdmin ? r.ranges : r.kmRanges;
+        if (typeof k === 'string') { try { k = JSON.parse(k); } catch (_) { k = []; } }
+        return (k || []).map(function (p) { return isAdmin ? [Math.round(p[0] * 1000), Math.round(p[1] * 1000)] : [Math.round(p[0]), Math.round(p[1])]; });
+      })(),
+      distanceActual: num(isAdmin ? r.distActual : r.distanceActual),
+      distance2Lane: num(isAdmin ? r.dist2Lane : r.distance2Lane),
+      asphalt: num(r.asphalt) || 0, concrete: num(r.concrete) || 0, workQty: num(r.workQty),
+      status: r.status === 'transferred' ? 'transferred' : 'active',
+      transferredDate: r.transferredDate || '', transferNote: r.transferNote || '',
+      asOf: r.asOf || r.updatedAt || ''
+    };
+    o.id = routeId(o);
+    return o;
+  }
+  function normZone(z, routes) {
+    let km0 = num(z.kmStart), km1 = num(z.kmEnd);
+    const hw = String(z.highway || '').trim();
+    const r = routes.find(function (x) { return x.id === z.routeId; }) ||
+      routes.find(function (x) { return x.highway === hw && (x.kmRanges || []).some(function (p) { return km0 >= p[0] && km0 <= p[1]; }); }) ||
+      routes.find(function (x) { return x.highway === hw; });
+    let moob = z.moobans;
+    if (typeof moob === 'string') { try { moob = JSON.parse(moob); } catch (_) { moob = moob.split(/[,;]+/); } }
+    return {
+      id: String(z.id || ('z-' + hw + '-' + km0)), routeId: r ? r.id : (z.routeId || ''), highway: hw,
+      kmStart: km0, kmEnd: km1, side: z.side || '',
+      station: z.station || '', tambon: z.tambon || '', amphoe: z.amphoe || '', changwat: z.changwat || '',
+      moobans: (moob || []).map(function (s) { return String(s).trim(); }).filter(Boolean)
+    };
+  }
+  function normSurface(x) {
+    const side = x.side === 'Lt' || String(x.side) === '-1' ? 'Lt' : (x.side === 'Rt' || String(x.side) === '1' ? 'Rt' : String(x.side || ''));
+    const o = {
+      highway: String(x.highway).trim(), controlNo: String(x.controlNo || '').trim(), kmStart: num(x.kmStart), kmEnd: num(x.kmEnd), side: side,
+      lanes: Number(x.lanes) || 0, laneWidth: num(x.laneWidth), surface: x.surface === 'conc' || x.surface === 'ac' ? x.surface : '',
+      standard: num(x.standard), roadType: num(x.roadType), shoulderLeftWidth: num(x.shoulderLeftWidth), shoulderRightWidth: num(x.shoulderRightWidth),
+      asOf: x.asOf || '', source: x.source || ''
+    };
+    o.id = x.id || (o.highway + '-' + o.controlNo + '-' + o.kmStart + '-' + o.side);
+    return o;
+  }
+  function normRow(x) {
+    const o = {
+      highway: String(x.highway).trim(), controlNo: String(x.controlNo || '').trim(), seq: Number(x.seq) || 0,
+      section: x.section || '', kmStart: num(x.kmStart), kmEnd: num(x.kmEnd), left: num(x.left), right: num(x.right),
+      basis: x.basis || '', note: x.note || '', source: x.source || ''
+    };
+    o.id = x.id || (o.highway + '-' + (o.controlNo || '0000') + '-' + String(o.seq).padStart(3, '0'));
+    return o;
+  }
+  function normAsset(m) {
+    return {
+      key: String(m.key), name: String(m.name || '').trim(), unit: String(m.unit || '').trim(), price: num(m.price) || 0,
+      category: m.category || '', frequent: !!m.frequent, hidden: !!m.hidden
+    };
+  }
+  function mergeInto(docId, incoming, keyName, mode, extra, label) {
+    const list = clone(items(docId));
+    const idx = {};
+    list.forEach(function (x, i) { idx[x[keyName]] = i; });
+    let added = 0, replaced = 0, skipped = 0;
+    incoming.forEach(function (x) {
+      if (idx[x[keyName]] == null) { idx[x[keyName]] = list.length; list.push(x); added++; }
+      else if (mode === 'replace') { list[idx[x[keyName]]] = x; replaced++; }
+      else skipped++;
+    });
+    if (added || replaced) draft(docId, list, 'นำเข้า' + label + ': เพิ่ม ' + added + (replaced ? ', ทับ ' + replaced : ''), extra);
+    return label + ': เพิ่มใหม่ ' + added + (replaced ? ' · ทับ ' + replaced : '') + (skipped ? ' · ข้าม (มีอยู่แล้ว) ' + skipped : '');
+  }
+
+  async function doImport(file) {
+    const out = $('imp-result');
+    try {
+      const data = JSON.parse(await file.text());
+      const mode = $('imp-mode').value;
+      const fy = Number($('imp-fy').value) || currentFiscalYear();
+      const report = [];
+      const zonesIn = Array.isArray(data) ? data : data.zones;
+      if (data.routes) report.push(mergeInto('routes', data.routes.map(normRoute), 'id', mode, null, 'สายทาง'));
+      if (zonesIn && zonesIn.length) report.push(mergeInto('zones', zonesIn.map(function (z) { return normZone(z, items('routes')); }), 'id', mode, null, 'เขตพื้นที่'));
+      if (data.surface) report.push(mergeInto('surface', data.surface.map(normSurface), 'id', mode, null, 'ผิวทาง'));
+      if (data.rightofway) report.push(mergeInto('rightofway', data.rightofway.map(normRow), 'id', mode, null, 'บัญชีเขตทาง'));
+      if (data.materials) report.push(mergeInto(assetDocId(fy), data.materials.map(normAsset), 'key', mode, { fiscalYear: fy }, 'ราคากลางปีงบ ' + fy));
+      if (data.assets && typeof data.assets === 'object') {
+        Object.keys(data.assets).forEach(function (y) {
+          report.push(mergeInto(assetDocId(Number(y)), data.assets[y].map(normAsset), 'key', mode, { fiscalYear: Number(y) }, 'ราคากลางปีงบ ' + y));
+        });
+      }
+      if (!report.length) throw new Error('ไม่พบข้อมูลสายทาง / เขตพื้นที่ / ราคากลาง ในไฟล์นี้');
+      S.tab = 'io'; render();
+      $('imp-result').innerHTML = '✔ อ่านไฟล์ ' + esc(file.name) + ' แล้ว<br>' + report.map(esc).join('<br>') + '<br><b>ยังไม่ได้บันทึก</b> ตรวจดูในแต่ละแท็บแล้วกด "บันทึกลงฐานข้อมูลกลาง"';
+    } catch (e) {
+      out.innerHTML = '<span style="color:var(--red)">นำเข้าไม่สำเร็จ: ' + esc(e.message) + '</span>';
+    }
+  }
+
+  function doExport() {
+    const assets = {};
+    fiscalYears().forEach(function (y) { const a = items(assetDocId(y)); if (a.length) assets[y] = a; });
+    const data = { format: 'cn-master', exportedAt: new Date().toISOString(), routes: items('routes'), zones: items('zones'), rightofway: items('rightofway'), surface: items('surface'), assets: assets };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cn-master-backup-' + todayIso() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  /* ----- ประวัติ ----- */
+  function renderHistory(v) {
+    if (!S.owner) { v.innerHTML = '<div class="panel empty">ประวัติการแก้ไขดูได้เฉพาะเจ้าของเว็บ</div>'; return; }
+    if (S.history === null) {
+      v.innerHTML = '<div class="panel empty">กำลังโหลดประวัติ…</div>';
+      S.history = 'loading';
+      FBL.masterHistory(40).then(function (h) { S.history = h; render(); })
+        .catch(function (e) { S.history = null; v.innerHTML = '<div class="panel empty">' + esc(e.message) + '</div>'; });
+      return;
+    }
+    if (S.history === 'loading') return;
+    let h = '<div class="panel"><div class="toolbar"><div class="grow"><p class="meta" style="margin:0">การแก้ไขล่าสุด 40 ครั้ง</p></div>' +
+      '<button class="btn" type="button" data-act="hist-reload">โหลดใหม่</button></div>';
+    if (!S.history.length) h += '<div class="empty">ยังไม่มีประวัติการแก้ไข</div>';
+    S.history.forEach(function (x) {
+      h += '<div class="hist-item"><b>' + esc(docTitle(x.docId)) + '</b> · รุ่น ' + x.fromVersion + ' → ' + x.toVersion + ' · <span class="hint">' + esc(fmtDateTime(x.at)) + '</span>' +
+        '<pre>' + esc(x.summary) + '</pre>' +
+        (x.fromVersion ? '<button class="btn sm" type="button" data-act="hist-restore" data-id="' + esc(x.__id) + '">กู้คืนเป็นฉบับก่อนการแก้ไขนี้ (รุ่น ' + x.fromVersion + ')</button>' : '') + '</div>';
+    });
+    v.innerHTML = h + '</div>';
+  }
+
+  /* ---------- modal ---------- */
+  function field(name, label, value, type, attrs, cls) {
+    return '<label class="f' + (cls ? ' ' + cls : '') + '">' + esc(label) +
+      '<input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '" ' + (attrs || '') + '></label>';
+  }
+  function openModal(title, bodyHtml, onSubmit, submitLabel) {
+    const root = $('modal-root');
+    root.innerHTML = '<div class="modal-bg"><form class="modal" novalidate><h3>' + esc(title) + '</h3>' + bodyHtml +
+      '<div class="form-err"></div><div class="modal-actions"><button type="button" class="btn" data-close>ยกเลิก</button>' +
+      '<button type="submit" class="btn primary">' + esc(submitLabel || 'ตกลง') + '</button></div></form></div>';
+    const form = root.querySelector('form');
+    const close = function () { root.innerHTML = ''; };
+    root.querySelector('[data-close]').onclick = close;
+    root.querySelector('.modal-bg').addEventListener('mousedown', function (e) { if (e.target === e.currentTarget) close(); });
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const f = {};
+      Array.from(form.elements).forEach(function (el) {
+        if (!el.name) return;
+        f[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+      });
+      const btn = form.querySelector('[type=submit]'); btn.disabled = true;
+      try {
+        const err = await onSubmit(f);
+        if (err) { form.querySelector('.form-err').textContent = err; btn.disabled = false; return; }
+        close();
+      } catch (ex) { form.querySelector('.form-err').textContent = ex.message; btn.disabled = false; }
+    });
+    const first = form.querySelector('input:not([readonly]),textarea,select');
+    if (first) first.focus();
+  }
+
+  function loginForm() {
+    openModal('เข้าสู่ระบบเจ้าของเว็บ',
+      '<div class="form-grid">' + field('id', 'ID เจ้าของ', '', 'text', 'autocomplete="username"', 'full') +
+      field('pw', 'รหัสผ่าน', '', 'password', 'autocomplete="current-password"', 'full') + '</div>',
+      async function (f) { await FBL.login(f.id, f.pw); }, 'เข้าสู่ระบบ');
+  }
+
+  /* ---------- ปุ่มต่างๆ ---------- */
+  document.addEventListener('click', function (e) {
+    const t = e.target.closest('[data-tab],[data-act]');
+    if (!t) return;
+    if (t.dataset.tab) {
+      S.tab = t.dataset.tab;
+      try { localStorage.setItem('cn_master_tab', S.tab); } catch (_) {}
+      render(); return;
+    }
+    const id = t.dataset.id;
+    switch (t.dataset.act) {
+      case 'route-add': routeForm(null); break;
+      case 'route-edit': routeForm(items('routes').find(function (x) { return x.id === id; })); break;
+      case 'route-del': {
+        const r = items('routes').find(function (x) { return x.id === id; });
+        if (confirm('ลบสายทาง ' + r.highway + ' ตอน ' + r.controlNo + ' ออกจากฐานข้อมูลกลาง?\n\nถ้าโอนสายทางให้หน่วยงานอื่น แนะนำให้กด "แก้ไข" แล้วเปลี่ยนสถานะเป็น "โอนแล้ว" แทน')) {
+          draft('routes', items('routes').filter(function (x) { return x.id !== id; }), 'ลบสายทาง ' + r.highway + ' ตอน ' + r.controlNo);
+        }
+        break;
+      }
+      case 'zone-add': zoneForm(null); break;
+      case 'zone-edit': zoneForm(items('zones').find(function (x) { return x.id === id; })); break;
+      case 'zone-del': {
+        const z = items('zones').find(function (x) { return x.id === id; });
+        if (confirm('ลบเขตพื้นที่ ทล.' + z.highway + ' ' + fmtKm(z.kmStart) + '–' + fmtKm(z.kmEnd) + '?')) {
+          draft('zones', items('zones').filter(function (x) { return x.id !== id; }), 'ลบเขตพื้นที่ ทล.' + z.highway + ' ' + fmtKm(z.kmStart) + '–' + fmtKm(z.kmEnd));
+        }
+        break;
+      }
+      case 'route-calc': routeStatsForm(); break;
+      case 'surf-add': surfaceForm(null); break;
+      case 'surf-edit': surfaceForm(items('surface').find(function (x) { return x.id === id; })); break;
+      case 'surf-del': {
+        const x = items('surface').find(function (r) { return r.id === id; });
+        if (confirm('ลบช่วงผิวทาง ทล.' + x.highway + ' ' + fmtKm(x.kmStart) + '–' + fmtKm(x.kmEnd) + ' (' + (SIDE_TH[x.side] || x.side) + ')?')) {
+          draft('surface', items('surface').filter(function (r) { return r.id !== id; }), 'ลบผิวทาง ทล.' + x.highway + ' ' + fmtKm(x.kmStart) + '–' + fmtKm(x.kmEnd) + ' ' + (SIDE_TH[x.side] || x.side));
+        }
+        break;
+      }
+      case 'row-add': rowForm(null); break;
+      case 'row-edit': rowForm(items('rightofway').find(function (x) { return x.id === id; })); break;
+      case 'row-del': {
+        const x = items('rightofway').find(function (r) { return r.id === id; });
+        if (confirm('ลบช่วงเขตทาง ทล.' + x.highway + ' ลำดับ ' + x.seq + ' (' + fmtKm(x.kmStart) + '–' + fmtKm(x.kmEnd) + ')?')) {
+          draft('rightofway', items('rightofway').filter(function (r) { return r.id !== id; }), 'ลบเขตทาง ทล.' + x.highway + ' ลำดับ ' + x.seq);
+        }
+        break;
+      }
+      case 'asset-add': assetForm(null); break;
+      case 'asset-edit': assetForm(items(assetDocId(S.fy)).find(function (x) { return x.key === id; })); break;
+      case 'fy-new': newFiscalYearForm(); break;
+      case 'export': doExport(); break;
+      case 'hist-reload': S.history = null; render(); break;
+      case 'hist-restore': {
+        const x = S.history.find(function (h) { return h.__id === id; });
+        if (!x) break;
+        if (confirm('โหลด' + docTitle(x.docId) + ' รุ่น ' + x.fromVersion + ' กลับมาเป็นฉบับร่าง?\n(ยังไม่บันทึกจนกว่าจะกดบันทึก)')) {
+          const extra = /^assets_/.test(x.docId) ? { fiscalYear: Number(x.docId.slice(7)) } : null;
+          draft(x.docId, JSON.parse(x.before || '[]'), 'กู้คืนเป็นฉบับรุ่น ' + x.fromVersion, extra);
+          toast('โหลดฉบับรุ่น ' + x.fromVersion + ' เป็นฉบับร่างแล้ว ตรวจดูแล้วกดบันทึก');
+        }
+        break;
+      }
+    }
+  });
+  document.addEventListener('change', function (e) {
+    if (e.target.id === 'fy-select') { S.fy = Number(e.target.value); render(); }
+    else if (e.target.id === 'asset-cat') { S.assetCat = e.target.value; render(); }
+    else if (e.target.id === 'row-hw') { S.rowHw = e.target.value; render(); }
+    else if (e.target.id === 'surf-hw') { S.surfHw = e.target.value; render(); }
+    else if (e.target.id === 'row-area') { S.rowInArea = e.target.checked; render(); }
+    else if (e.target.id === 'imp-file' && e.target.files[0]) doImport(e.target.files[0]);
+  });
+  document.addEventListener('input', function (e) {
+    if (e.target.id === 'asset-search') {
+      S.assetSearch = e.target.value;
+      const pos = e.target.selectionStart;
+      render();
+      const el = $('asset-search'); el.focus(); el.setSelectionRange(pos, pos);
+    }
+  });
+
+  $('btn-login').addEventListener('click', async function () {
+    if (!S.owner) { loginForm(); return; }
+    if (Object.keys(S.drafts).length && !confirm('ยังมีการแก้ไขที่ไม่ได้บันทึก ออกจากระบบแล้วการแก้ไขจะหาย ต้องการออกหรือไม่?')) return;
+    S.drafts = {};
+    await FBL.logout();
+  });
+  $('btn-discard').addEventListener('click', function () {
+    if (!confirm('ยกเลิกการแก้ไขทั้งหมดที่ยังไม่บันทึก?')) return;
+    S.drafts = {}; render();
+  });
+  $('btn-save').addEventListener('click', async function () {
+    const btn = this; btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+    const ids = Object.keys(S.drafts);
+    const done = [];
+    try {
+      for (const docId of ids) {
+        const d = S.drafts[docId];
+        const expect = S.master[docId] ? (S.master[docId].version || 0) : 0;
+        await FBL.saveMaster(docId, d.items, d.extra, d.changes.join('\n'), expect);
+        delete S.drafts[docId];
+        done.push(docTitle(docId));
+      }
+      S.history = null;
+      toast('บันทึกแล้ว: ' + done.join(', ') + ' — ทุกระบบงานจะเห็นข้อมูลใหม่ทันที');
+    } catch (e) {
+      alert('บันทึกไม่สำเร็จ' + (done.length ? ' (บันทึกสำเร็จไปแล้ว: ' + done.join(', ') + ')' : '') + '\n\n' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'บันทึกลงฐานข้อมูลกลาง';
+      render();
+    }
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (Object.keys(S.drafts).length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* ---------- เริ่มทำงาน ---------- */
+  render();
+  if (FBL.configured) {
+    FBL.onError = function (msg) { toast(msg); };
+    FBL.onAuth(function (owner) {
+      S.owner = owner;
+      if (!owner) { S.drafts = {}; S.history = null; }
+      render();
+    });
+    FBL.watchMaster(function (m) { S.master = m; S.loaded = true; S.loadError = ''; render(); }, function (msg) {
+      S.loaded = true;
+      S.loadError = 'อ่านฐานข้อมูลกลางไม่ได้: ' + msg + ' — ถ้าเพิ่งติดตั้ง ให้วางไฟล์ firestore.rules ชุดใหม่ใน Firebase Console ก่อน';
+      render();
+    });
+  }
+})();
+</script>
+</body>
+</html>

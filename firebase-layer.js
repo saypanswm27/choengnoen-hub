@@ -205,4 +205,59 @@
       }));
     } catch (e) { throw new Error(thErr(e)); }
   };
+
+  /* ==========================================================================
+     ฐานข้อมูลกลาง (master) — ข้อมูลอ้างอิงที่ทุกระบบงานมาอ่าน (ดู master-data.html / master-client.js)
+       master/routes        { version, updatedAt, items: [สายทาง] }
+       master/zones         { version, updatedAt, items: [เขตพื้นที่รับผิดชอบ] }
+       master/assets_<ปีงบ> { version, updatedAt, fiscalYear, items: [ราคากลางทรัพย์สิน] }
+       master_history/{id}  { docId, fromVersion, toVersion, summary, before (JSON), at }
+     ========================================================================== */
+  // cb(ข้อมูล) เมื่ออ่านสำเร็จ / onFail(ข้อความ) เมื่ออ่านไม่ได้ (เช่น ยังไม่ได้วาง firestore.rules ชุดใหม่)
+  FBL.watchMaster = function (cb, onFail) {
+    return db.collection('master').onSnapshot(function (snap) {
+      const out = {};
+      snap.docs.forEach(function (d) { out[d.id] = d.data(); });
+      cb(out);
+    }, function (err) {
+      console.error('watch master failed', err);
+      if (onFail) onFail(thErr(err));
+      else if (FBL.onError) FBL.onError(thErr(err));
+    });
+  };
+
+  // บันทึกทั้งเอกสารในคำสั่งเดียว พร้อมเก็บฉบับก่อนแก้ไว้ใน master_history
+  // expectVersion = เลขรุ่นที่หน้าเว็บเห็นตอนเริ่มแก้ ถ้าในฐานข้อมูลเปลี่ยนไปแล้ว (เช่น แก้จากอีกแท็บ) จะไม่ยอมบันทึกทับ
+  FBL.saveMaster = async function (docId, items, extra, summary, expectVersion) {
+    const ref = db.collection('master').doc(docId);
+    const histRef = db.collection('master_history').doc();
+    try {
+      return await db.runTransaction(async function (tx) {
+        const cur = await tx.get(ref);
+        const curVersion = cur.exists ? (cur.data().version || 0) : 0;
+        if ((expectVersion || 0) !== curVersion) {
+          throw new Error('ข้อมูลชุดนี้ถูกแก้ไขจากที่อื่นระหว่างที่คุณกำลังแก้ (รุ่น ' + curVersion + ') กรุณาโหลดหน้าใหม่แล้วแก้อีกครั้ง');
+        }
+        const data = Object.assign({}, extra || {}, { items: items, version: curVersion + 1, updatedAt: nowIso() });
+        tx.set(ref, data);
+        tx.set(histRef, {
+          docId: docId, fromVersion: curVersion, toVersion: curVersion + 1,
+          summary: String(summary || '').slice(0, 2000),
+          before: cur.exists ? JSON.stringify(cur.data().items || []) : '[]',
+          at: nowIso()
+        });
+        return curVersion + 1;
+      });
+    } catch (e) {
+      if (e && e.code) throw new Error(thErr(e));
+      throw e;
+    }
+  };
+
+  FBL.masterHistory = async function (limit) {
+    try {
+      const snap = await db.collection('master_history').orderBy('at', 'desc').limit(limit || 50).get();
+      return snap.docs.map(function (d) { return Object.assign({ __id: d.id }, d.data()); });
+    } catch (e) { throw new Error(thErr(e)); }
+  };
 })();
