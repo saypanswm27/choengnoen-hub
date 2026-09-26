@@ -43,6 +43,35 @@
   const listeners = [];
   const watching = {};    // docId → Promise ของ snapshot แรก
 
+  /* ---------- ตรากรมทางหลวง (ไฟล์กลางไฟล์เดียว เปลี่ยนที่ฮับแล้วทุกระบบเปลี่ยนตาม) ----------
+     ระบบงานไม่ต้องเขียนโค้ดเพิ่ม: <img alt="ตรากรมทางหลวง"> หรือ <img data-cn-emblem> จะถูกเปลี่ยนเป็นตรากลางให้อัตโนมัติ
+     (รวมรูปที่สร้างทีหลังด้วย innerHTML) · ไอคอนแท็บ ใส่ <link rel="icon" data-cn-emblem> ถ้าต้องการให้ใช้ตรากลางด้วย
+     โหลดตรากลางไม่ได้ (ออฟไลน์/ฮับล่ม) = ใช้ไฟล์ logo ของระบบนั้นต่อไปตามเดิม */
+  M.EMBLEM_URL = 'https://choengnoen.github.io/choengnoen-hub/assets/doh-emblem.png';
+  (function () {
+    const SEL = 'img[data-cn-emblem], img[alt="ตรากรมทางหลวง"], link[rel~="icon"][data-cn-emblem]';
+    function apply(root) {
+      if (!root.querySelectorAll) return;
+      const els = root.matches && root.matches(SEL) ? [root] : [];
+      root.querySelectorAll(SEL).forEach(function (el) { els.push(el); });
+      els.forEach(function (el) {
+        if (el.tagName === 'LINK') el.href = M.EMBLEM_URL;
+        else if (el.getAttribute('src') !== M.EMBLEM_URL) el.src = M.EMBLEM_URL;
+      });
+    }
+    const probe = new Image();
+    probe.onload = function () {
+      function start() {
+        apply(document);
+        new MutationObserver(function (muts) {
+          muts.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) apply(n); }); });
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+    };
+    probe.src = M.EMBLEM_URL;
+  })();
+
   M.fiscalYear = function (date) {
     const d = date ? new Date(date) : new Date();
     if (isNaN(d)) return null;
