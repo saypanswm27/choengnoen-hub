@@ -301,6 +301,7 @@
     { key: 'zones', label: 'เขตพื้นที่', icon: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>' },
     { key: 'rightofway', label: 'บัญชีเขตทาง', icon: '<path d="M3 12h18"/><path d="M7 8l-4 4 4 4"/><path d="M17 8l4 4-4 4"/>' },
     { key: 'surface', label: 'ผิวทาง', icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18"/>' },
+    { key: 'workcodes', label: 'รหัสงาน', icon: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>' },
     { key: 'assets', label: 'ราคาประเมินทรัพย์สิน', icon: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>' },
     { key: 'io', label: 'นำเข้า / ส่งออก', icon: '<path d="M7 10l5-5 5 5"/><path d="M12 5v11"/><path d="M4 19h16"/>' },
     { key: 'history', label: 'ประวัติการแก้ไข', icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' }
@@ -320,6 +321,8 @@
     rowHw: '*',
     rowInArea: true,    // แสดงเฉพาะช่วงที่ทับกับสายทางที่หมวดดูแล
     surfHw: '*',
+    wcSearch: '',
+    wcGroup: '21000',   // เริ่มที่งานบำรุงปกติ (ที่หมวดใช้บ่อยที่สุด)
     history: null
   };
   // เปิดแท็บตามลิงก์ก่อน (เช่น master-data.html#routes จากปุ่ม "แก้ไขที่ฐานข้อมูลกลาง" ในระบบงาน) ไม่มีจึงใช้แท็บล่าสุดที่เปิด
@@ -435,6 +438,7 @@
     else if (S.tab === 'zones') renderZones(v);
     else if (S.tab === 'rightofway') renderRow(v);
     else if (S.tab === 'surface') renderSurface(v);
+    else if (S.tab === 'workcodes') renderWorkCodes(v);
     else if (S.tab === 'assets') renderAssets(v);
     else if (S.tab === 'io') renderIO(v);
     else renderHistory(v);
@@ -460,6 +464,7 @@
       if (t.key === 'zones' && S.drafts.zones) n = 1;
       if (t.key === 'rightofway' && S.drafts.rightofway) n = 1;
       if (t.key === 'surface' && S.drafts.surface) n = 1;
+      if (t.key === 'workcodes' && S.drafts.workcodes) n = 1;
       if (t.key === 'assets') n = Object.keys(S.drafts).filter(function (k) { return /^assets_/.test(k); }).length;
       return '<button type="button" class="tab' + (S.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' + tabIcon(t) + esc(t.label) +
         (n ? '<span class="badge" title="มีการแก้ไขที่ยังไม่บันทึก">' + n + '</span>' : '') + '</button>';
@@ -485,6 +490,7 @@
     if (docId === 'zones') return 'เขตพื้นที่';
     if (docId === 'rightofway') return 'บัญชีเขตทาง';
     if (docId === 'surface') return 'ผิวทาง';
+    if (docId === 'workcodes') return 'รหัสงาน';
     const m = docId.match(/^assets_(\d{4})$/);
     return m ? 'ราคาประเมินปีงบ ' + m[1] : docId;
   }
@@ -845,6 +851,84 @@
     document.querySelector('#modal-root .modal').style.maxWidth = '760px';
   }
 
+  /* ----- รหัสงาน (รายละเอียดรหัสงานของกรมทางหลวง) -----
+     1 รหัสงานมีหน่วยนับได้หลายหน่วย (units ตัวแรก = หน่วยหลัก) · units ว่าง = หัวข้อหมวด ไม่ใช่รหัสที่ลงผลงานได้ */
+  function wcGroupOf(code) { return String(code).slice(0, 2) + '000'; }
+  function wcDepth(x, byCode) {
+    let d = 0, p = x.parent, guard = 0;
+    while (p && byCode[p] && guard++ < 10) { d++; p = byCode[p].parent; }
+    return d;
+  }
+  function parseUnits(text) {
+    const out = [];
+    String(text || '').split(/[,，/]+/).forEach(function (s) { s = s.trim(); if (s && out.indexOf(s) < 0) out.push(s); });
+    return out;
+  }
+
+  function renderWorkCodes(v) {
+    const all = items('workcodes').slice().sort(function (a, b) { return String(a.code).localeCompare(String(b.code)); });
+    const byCode = {};
+    all.forEach(function (x) { byCode[x.code] = x; });
+    const groups = Array.from(new Set(all.map(function (x) { return wcGroupOf(x.code); }))).sort();
+    const q = S.wcSearch.trim().toLowerCase();
+    const list = all.filter(function (x) {
+      if (S.wcGroup !== '*' && wcGroupOf(x.code) !== S.wcGroup) return false;
+      return !q || (x.code + ' ' + x.name + ' ' + (x.nameEn || '') + ' ' + (x.units || []).join(' ')).toLowerCase().indexOf(q) >= 0;
+    });
+    const changed = changedIds('workcodes', 'code');
+    let h = '<div class="panel"><div class="toolbar">' +
+      '<select id="wc-group" style="width:auto"><option value="*">ทุกหมวด</option>' + groups.map(function (g) {
+        const t = byCode[g];
+        return '<option value="' + g + '"' + (S.wcGroup === g ? ' selected' : '') + '>' + g + (t ? ' ' + esc(t.name) : '') + '</option>';
+      }).join('') + '</select>' +
+      '<div class="grow"><input type="search" id="wc-search" placeholder="ค้นหารหัส ชื่องาน หรือหน่วย…" value="' + esc(S.wcSearch) + '"></div>';
+    if (S.owner) h += '<button class="btn primary" type="button" data-act="wc-add">+ เพิ่มรหัสงาน</button>';
+    h += '</div><p class="meta">' + esc(docMeta('workcodes')) + ' · ทั้งหมด ' + all.length + ' รหัส' + (list.length !== all.length ? ' (แสดง ' + list.length + ')' : '') + '</p>';
+    h += '<p class="hint">ตามรายละเอียดรหัสงาน กรมทางหลวง (แก้ไขและเพิ่มเติม ธ.ค. 2565) · 1 รหัสงานมีหน่วยนับได้หลายหน่วย ระบบงานจะให้เลือกจากหน่วยในรายการนี้ (หน่วยแรก = หน่วยหลัก) · แถวตัวหนาที่ไม่มีหน่วย = หัวข้อหมวด</p>';
+    if (!all.length) h += '<div class="empty">ยังไม่มีรหัสงานในฐานข้อมูลกลาง' + (S.owner ? ' นำเข้าไฟล์ workcodes-seed.json ได้ที่แท็บ "นำเข้า / ส่งออก"' : '') + '</div>';
+    else if (!list.length) h += '<div class="empty">ไม่มีรหัสงานที่ตรงกับตัวกรอง</div>';
+    else {
+      h += '<div class="table-wrap" style="max-height:65vh;overflow:auto"><table><thead><tr><th>รหัสงาน</th><th>ลักษณะงาน</th><th>หน่วยนับ</th>' +
+        (S.owner ? '<th></th>' : '') + '</tr></thead><tbody>';
+      list.forEach(function (x) {
+        const head = !(x.units || []).length;
+        const pad = wcDepth(x, byCode) * 16;
+        h += '<tr class="' + (changed.has(x.code) ? 'changed' : '') + '"><td style="white-space:nowrap;padding-left:' + (10 + pad) + 'px">' + (head ? '<b>' + esc(x.code) + '</b>' : esc(x.code)) + '</td>' +
+          '<td class="wrap" style="min-width:280px">' + (head ? '<b>' + esc(x.name) + '</b>' : esc(x.name)) + (x.nameEn ? '<div class="hint">' + esc(x.nameEn) + '</div>' : '') + '</td>' +
+          '<td>' + (head ? '<span class="hint">หัวข้อหมวด</span>' : (x.units || []).map(function (u, i) { return '<span class="pill"' + (i ? ' style="opacity:.75"' : '') + '>' + esc(u) + '</span>'; }).join(' ')) + '</td>' +
+          (S.owner ? '<td class="row-actions"><button class="btn sm" type="button" data-act="wc-edit" data-id="' + esc(x.code) + '">แก้ไข</button> ' +
+            '<button class="btn sm danger" type="button" data-act="wc-del" data-id="' + esc(x.code) + '">ลบ</button></td>' : '') + '</tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    v.innerHTML = h + '</div>';
+  }
+
+  function workCodeForm(x) {
+    const isNew = !x;
+    if (!x) x = { code: '', name: '', nameEn: '', units: [], parent: S.wcGroup !== '*' ? S.wcGroup : '' };
+    openModal(isNew ? 'เพิ่มรหัสงาน' : 'แก้ไขรหัสงาน ' + x.code,
+      '<div class="form-grid">' +
+      field('code', 'รหัสงาน (5 หลัก) *', x.code, 'text', (isNew ? '' : 'readonly ') + 'inputmode="numeric" maxlength="5"') +
+      field('parent', 'อยู่ใต้รหัส (หัวข้อ/รหัสแม่)', x.parent, 'text', 'inputmode="numeric" maxlength="5"') +
+      '<label class="f full">ลักษณะงาน (ภาษาไทย) *<textarea name="name" rows="2">' + esc(x.name) + '</textarea></label>' +
+      field('nameEn', 'ชื่อภาษาอังกฤษ', x.nameEn, 'text', '', 'full') +
+      field('units', 'หน่วยนับ (คั่นด้วย , ถ้ามีหลายหน่วย)', (x.units || []).join(', '), 'text', 'placeholder="เช่น ม., ตร.ม., ลบ.ม."', 'full') +
+      '</div><p class="hint">หน่วยแรกคือหน่วยหลัก ระบบงานจะใช้เป็นค่าเริ่มต้น ปล่อยหน่วยนับว่าง = เป็นหัวข้อหมวด (ไม่ใช่รหัสที่ลงผลงานได้)</p>',
+      function (f) {
+        const o = { code: f.code.trim(), name: f.name.trim(), nameEn: f.nameEn.trim(), units: parseUnits(f.units), parent: f.parent.trim() };
+        if (!/^\d{5}$/.test(o.code)) return 'รหัสงานต้องเป็นตัวเลข 5 หลัก';
+        if (!o.name) return 'กรุณาใส่ลักษณะงาน';
+        const list = items('workcodes').slice();
+        if (isNew && list.some(function (r) { return r.code === o.code; })) return 'มีรหัสงาน ' + o.code + ' อยู่แล้ว';
+        if (o.parent && (o.parent === o.code || !list.some(function (r) { return r.code === o.parent; }))) return 'ไม่พบรหัสแม่ ' + o.parent + ' ในรายการ';
+        if (isNew) list.push(o); else list[list.findIndex(function (r) { return r.code === x.code; })] = o;
+        let msg = (isNew ? 'เพิ่ม' : 'แก้ไข') + 'รหัสงาน ' + o.code + ' ' + o.name.slice(0, 40);
+        if (!isNew && (x.units || []).join(',') !== o.units.join(',')) msg += ' (หน่วย ' + ((x.units || []).join(', ') || '–') + ' → ' + (o.units.join(', ') || '–') + ')';
+        draft('workcodes', list, msg);
+      });
+  }
+
   /* ----- ราคาประเมินทรัพย์สิน ----- */
   // ราคาของปีงบ fy = ราคาที่บันทึกในปีนั้น หรือถ้าปีนั้นไม่มีการแก้ราคา ใช้ปีงบล่าสุดก่อนหน้าที่มีราคา
   function assetYearUsed(fy) { return fiscalYears().filter(function (y) { return y <= fy && items(assetDocId(y)).length; })[0] || null; }
@@ -947,7 +1031,7 @@
     if (S.owner) {
       h += '<hr style="border:none;border-top:1px solid var(--line);margin:18px 0">' +
         '<h3 style="font-weight:500">นำเข้าข้อมูล</h3>' +
-        '<p class="hint">รองรับไฟล์: <b>master-seed.json</b> (สายทาง + ราคาประเมิน จากระบบงานโจรกรรม) · <b>rightofway-seed.json</b> (บัญชีเขตทาง 19.3.67) · <b>surface-seed.json</b> (ลักษณะผิวทาง 19.8.69) · ไฟล์สำรองของหน้านี้ · ไฟล์เขตพื้นที่ที่ส่งออกจากระบบงาน<br>' +
+        '<p class="hint">รองรับไฟล์: <b>master-seed.json</b> (สายทาง + ราคาประเมิน จากระบบงานโจรกรรม) · <b>rightofway-seed.json</b> (บัญชีเขตทาง 19.3.67) · <b>surface-seed.json</b> (ลักษณะผิวทาง 19.8.69) · <b>workcodes-seed.json</b> (รายละเอียดรหัสงาน ธ.ค. 2565) · ไฟล์สำรองของหน้านี้ · ไฟล์เขตพื้นที่ที่ส่งออกจากระบบงาน<br>' +
         'ข้อมูลที่นำเข้าจะเป็นฉบับร่างก่อน ตรวจดูในแต่ละแท็บแล้วค่อยกดบันทึก</p>' +
         '<div class="form-grid" style="max-width:640px">' +
         '<label class="f">ราคาประเมินในไฟล์ ให้เป็นของปีงบ<input type="number" id="imp-fy" value="' + currentFiscalYear() + '" min="2560" max="2700"></label>' +
@@ -1015,6 +1099,12 @@
     o.id = x.id || (o.highway + '-' + (o.controlNo || '0000') + '-' + String(o.seq).padStart(3, '0'));
     return o;
   }
+  function normWorkCode(x) {
+    return {
+      code: String(x.code || x.jobCode || '').trim(), name: String(x.name || x.jobName || '').trim(), nameEn: String(x.nameEn || '').trim(),
+      units: Array.isArray(x.units) ? parseUnits(x.units.join(',')) : parseUnits(x.unit), parent: String(x.parent || '').trim()
+    };
+  }
   function normAsset(m) {
     return {
       key: String(m.key), name: String(m.name || '').trim(), unit: String(m.unit || '').trim(), price: num(m.price) || 0,
@@ -1047,13 +1137,14 @@
       if (zonesIn && zonesIn.length) report.push(mergeInto('zones', zonesIn.map(function (z) { return normZone(z, items('routes')); }), 'id', mode, null, 'เขตพื้นที่'));
       if (data.surface) report.push(mergeInto('surface', data.surface.map(normSurface), 'id', mode, null, 'ผิวทาง'));
       if (data.rightofway) report.push(mergeInto('rightofway', data.rightofway.map(normRow), 'id', mode, null, 'บัญชีเขตทาง'));
+      if (data.workcodes) report.push(mergeInto('workcodes', data.workcodes.map(normWorkCode).filter(function (x) { return /^\d{5}$/.test(x.code) && x.name; }), 'code', mode, null, 'รหัสงาน'));
       if (data.materials) report.push(mergeInto(assetDocId(fy), data.materials.map(normAsset), 'key', mode, { fiscalYear: fy }, 'ราคาประเมินปีงบ ' + fy));
       if (data.assets && typeof data.assets === 'object') {
         Object.keys(data.assets).forEach(function (y) {
           report.push(mergeInto(assetDocId(Number(y)), data.assets[y].map(normAsset), 'key', mode, { fiscalYear: Number(y) }, 'ราคาประเมินปีงบ ' + y));
         });
       }
-      if (!report.length) throw new Error('ไม่พบข้อมูลสายทาง / เขตพื้นที่ / ราคาประเมิน ในไฟล์นี้');
+      if (!report.length) throw new Error('ไม่พบข้อมูลสายทาง / เขตพื้นที่ / รหัสงาน / ราคาประเมิน ในไฟล์นี้');
       S.tab = 'io'; render();
       $('imp-result').innerHTML = '✔ อ่านไฟล์ ' + esc(file.name) + ' แล้ว<br>' + report.map(esc).join('<br>') + '<br><b>ยังไม่ได้บันทึก</b> ตรวจดูในแต่ละแท็บแล้วกด "บันทึกลงฐานข้อมูลกลาง"';
     } catch (e) {
@@ -1064,7 +1155,7 @@
   function doExport() {
     const assets = {};
     fiscalYears().forEach(function (y) { const a = items(assetDocId(y)); if (a.length) assets[y] = a; });
-    const data = { format: 'cn-master', exportedAt: new Date().toISOString(), routes: items('routes'), zones: items('zones'), rightofway: items('rightofway'), surface: items('surface'), assets: assets };
+    const data = { format: 'cn-master', exportedAt: new Date().toISOString(), routes: items('routes'), zones: items('zones'), rightofway: items('rightofway'), surface: items('surface'), workcodes: items('workcodes'), assets: assets };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1185,6 +1276,17 @@
         }
         break;
       }
+      case 'wc-add': workCodeForm(null); break;
+      case 'wc-edit': workCodeForm(items('workcodes').find(function (x) { return x.code === id; })); break;
+      case 'wc-del': {
+        const x = items('workcodes').find(function (r) { return r.code === id; });
+        const kids = items('workcodes').filter(function (r) { return r.parent === id; });
+        if (kids.length) { alert('รหัส ' + id + ' มีรหัสย่อยอยู่ ' + kids.length + ' รหัส (' + kids.slice(0, 5).map(function (r) { return r.code; }).join(', ') + (kids.length > 5 ? ' …' : '') + ') ลบรหัสย่อยหรือย้ายไปอยู่ใต้รหัสอื่นก่อน'); break; }
+        if (confirm('ลบรหัสงาน ' + x.code + ' ' + x.name + ' ออกจากฐานข้อมูลกลาง?\n\nระบบงานที่เคยใช้รหัสนี้จะเลือกหน่วยนับจากฐานข้อมูลกลางไม่ได้')) {
+          draft('workcodes', items('workcodes').filter(function (r) { return r.code !== id; }), 'ลบรหัสงาน ' + x.code + ' ' + x.name.slice(0, 40));
+        }
+        break;
+      }
       case 'asset-add': assetForm(null); break;
       case 'asset-edit': assetForm(assetView(currentFiscalYear()).find(function (x) { return x.key === id; })); break;      case 'export': doExport(); break;
       case 'hist-reload': S.history = null; render(); break;
@@ -1205,6 +1307,7 @@
     else if (e.target.id === 'asset-cat') { S.assetCat = e.target.value; render(); }
     else if (e.target.id === 'row-hw') { S.rowHw = e.target.value; render(); }
     else if (e.target.id === 'surf-hw') { S.surfHw = e.target.value; render(); }
+    else if (e.target.id === 'wc-group') { S.wcGroup = e.target.value; render(); }
     else if (e.target.id === 'row-area') { S.rowInArea = e.target.checked; render(); }
     else if (e.target.id === 'imp-file' && e.target.files[0]) doImport(e.target.files[0]);
   });
@@ -1214,6 +1317,11 @@
       const pos = e.target.selectionStart;
       render();
       const el = $('asset-search'); el.focus(); el.setSelectionRange(pos, pos);
+    } else if (e.target.id === 'wc-search') {
+      S.wcSearch = e.target.value;
+      const pos = e.target.selectionStart;
+      render();
+      const el = $('wc-search'); el.focus(); el.setSelectionRange(pos, pos);
     }
   });
 

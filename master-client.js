@@ -12,6 +12,9 @@
      CNMaster.findRightOfWay('3', 230500)        // ความกว้างเขตทาง { left, right, basis, ... } ของจุดนั้น
      CNMaster.findSurface('3', 230500)           // ลักษณะผิวทาง { lanesLt, lanesRt, surface, shoulderLeftWidth, ... }
      CNMaster.clearanceToBoundary('3', 230500)   // ระยะจากขอบไหล่ทางถึงแนวเขตทาง ซ้าย/ขวา (ม.)
+     CNMaster.workCodes()                        // รหัสงานทั้งหมด [{ code, name, nameEn, units: ['ตร.ม.', 'ตัน'], parent }]
+     CNMaster.findWorkCode('21113')              // รหัสงานเดียว (ไม่มีคืน null)
+     CNMaster.unitsOf('21113')                   // หน่วยนับที่ใช้ได้ของรหัสงาน ['ตร.ม.', 'ตัน'] (ตัวแรก = หน่วยหลัก, หัวข้อหมวด/ไม่พบ = [])
      await CNMaster.loadAssets(2568)             // โหลดราคาประเมินปีงบอื่นเพิ่ม (ปีปัจจุบันและปีก่อนโหลดให้อัตโนมัติ)
      CNMaster.assets(2569)                       // รายการราคาประเมินของปีงบ (ไม่ระบุปี = ชุดที่ใช้อยู่ ดู assetsYear)
      CNMaster.assetsYear()                       // ปีงบของราคาที่ใช้อยู่ = ปีล่าสุดที่มีราคา (ปีที่ไม่ได้ปรับราคาใช้ราคาล่าสุดต่อ)
@@ -131,7 +134,7 @@
     });
   }
   let watchedFy = M.fiscalYear();
-  M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchAssetYears(watchedFy)]).then(function () { return M; });
+  M.ready = Promise.all([watchDoc('routes'), watchDoc('zones'), watchDoc('rightofway'), watchDoc('surface'), watchDoc('workcodes'), watchAssetYears(watchedFy)]).then(function () { return M; });
   // เปิดหน้าค้างข้าม 1 ต.ค. → เริ่มอ่านราคาปีงบใหม่ แล้วแจ้งระบบงานให้ใช้ราคาชุดใหม่ (ไม่ต้องรีเฟรช)
   setInterval(function () {
     const fy = M.fiscalYear();
@@ -144,7 +147,7 @@
   M.updatedAt = function (docId) { return docs[docId] ? (docs[docId].updatedAt || '') : ''; };
   // ลิงก์หน้าแก้ไขข้อมูลกลาง (ใช้ทำปุ่ม "แก้ไขที่ฐานข้อมูลกลาง" ในระบบงาน)
   M.EDIT_URL = 'https://choengnoen.github.io/choengnoen-hub/master-data.html';
-  // ลิงก์ไปแท็บที่ต้องการ: 'routes' | 'zones' | 'rightofway' | 'surface' | 'assets'
+  // ลิงก์ไปแท็บที่ต้องการ: 'routes' | 'zones' | 'rightofway' | 'surface' | 'workcodes' | 'assets'
   M.editUrl = function (tab) { return M.EDIT_URL + (tab ? '#' + tab : ''); };
 
   /* ---------- สายทาง ---------- */
@@ -225,6 +228,15 @@
       rightOfWay: row, surface: s
     };
   };
+
+  /* ---------- รหัสงาน (ตามรายละเอียดรหัสงานของกรมทางหลวง) ----------
+     1 รหัสงานมีหน่วยนับได้หลายหน่วย (เช่น 21311 งานทางระบายน้ำ: ม. / ตร.ม. / ลบ.ม.) ระบบงานควรให้เลือกจาก unitsOf() */
+  M.workCodes = function () { return list('workcodes'); };
+  M.findWorkCode = function (code) {
+    const c = String(code == null ? '' : code).trim();
+    return list('workcodes').find(function (x) { return String(x.code) === c; }) || null;
+  };
+  M.unitsOf = function (code) { const w = M.findWorkCode(code); return w && Array.isArray(w.units) ? w.units.slice() : []; };
 
   /* ---------- ราคาประเมินทรัพย์สิน (แยกปีงบ) ---------- */
   M.loadAssets = function (fy) { return watchDoc('assets_' + fy).then(function () { return list('assets_' + fy); }); };
