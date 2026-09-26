@@ -139,6 +139,57 @@
   .btn-owner.active { background: var(--orange); border-color: var(--orange); color: var(--white); }
   .btn-owner.active:hover { background: #D5651E; }
 
+  /* ---------- เมนูผู้จัดการ (ปุ่ม ☰ สีส้ม) ---------- */
+  .owner-menu-wrap { position: relative; }
+  .owner-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 100;
+    width: 270px;
+    max-width: calc(100vw - 32px);
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 18px 44px -12px rgba(10,26,48,0.35);
+    padding: 6px;
+    animation: menuPop 0.14s ease-out;
+  }
+  .owner-menu[hidden] { display: none; }
+  @keyframes menuPop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .menu-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ink-light);
+    padding: 8px 10px 4px;
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ink);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .menu-item svg { flex-shrink: 0; color: var(--ink-light); }
+  .menu-item:hover, .menu-item:focus-visible { background: var(--paper-2); outline: none; }
+  .menu-item:hover svg { color: var(--blue-bottom); }
+  .menu-item span { display: flex; flex-direction: column; min-width: 0; }
+  .menu-item small { font-size: 0.75rem; color: var(--ink-light); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu-sep { height: 1px; background: var(--line); margin: 6px 4px; }
+  .menu-danger, .menu-danger svg { color: #C0392B; }
+  .menu-danger:hover { background: #FBE3E1; }
+  .menu-danger:hover svg { color: #C0392B; }
+
   /* ตัวอย่างหัวเว็บ: สัดส่วนกว้าง:สูงเท่าหัวเว็บจริง (ตั้งใน JS) + cover แบบเดียวกัน
      ตำแหน่งที่เห็นจึงตรงกับที่แสดงจริง — ใช้ box-shadow แทน border เพื่อไม่ให้พื้นที่รูปเพี้ยน */
   .hero-preview {
@@ -326,6 +377,32 @@
   .card.dragging .drag-handle { cursor: grabbing; }
   body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
   body.is-dragging .card:not(.dragging) { transform: none; }
+
+  /* ปุ่มจัดลำดับ / บันทึก / ยกเลิก ข้างชื่อหมวด */
+  .arrange-bar { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .arrange-hint { font-family: 'Sarabun', sans-serif; font-weight: 400; font-size: 0.8rem; color: var(--ink-light); margin-right: 4px; }
+  .btn-arrange {
+    font-family: 'Sarabun', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--white);
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: border-color 0.15s ease, color 0.15s ease, filter 0.15s ease;
+  }
+  .btn-arrange:hover { border-color: var(--blue-bottom); color: var(--blue-bottom); }
+  .btn-arrange.btn-primary { border-color: transparent; color: var(--white); }
+  .btn-arrange.btn-primary:hover { color: var(--white); }
+  .btn-arrange:disabled { opacity: 0.7; cursor: default; }
+  /* ระหว่างจัดลำดับ: ซ่อนปุ่มในการ์ด เหลือแค่ที่จับ จะได้ไม่เผลอกดแก้ไข */
+  .card-grid.arranging .card { outline: 1.5px dashed #B8C4D6; outline-offset: 2px; }
+  .card-grid.locked .card-actions-icons { display: none; }
 
   .card-top {
     display: flex;
@@ -737,6 +814,7 @@
     .hero-text h1 { font-size: 1.5rem; }
     .hero-text .eng-name { font-size: 0.9rem; }
     .card-grid { grid-template-columns: 1fr; }
+    .arrange-hint { display: none; }
   }
 </style>
 </head>
@@ -751,12 +829,13 @@
           <p class="eng-name" id="hero-subtitle">ChoengNoen Work Center</p>
         </div>
         <div class="hero-actions">
-          <button id="btn-hero-img" class="btn-owner" type="button" title="ตั้งค่าหัวเว็บ" style="display:none;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>
-          </button>
-          <a id="btn-master" class="btn-owner" href="master-data.html" title="ฐานข้อมูลกลาง" style="display:none;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg>
-          </a>
+          <!-- เมนูผู้จัดการ (เห็นเมื่อเข้าระบบแล้ว): ตั้งค่าหัวเว็บ / จัดลำดับการ์ด / ฐานข้อมูลกลาง / ออกจากระบบ -->
+          <div class="owner-menu-wrap">
+            <button id="btn-menu" class="btn-owner active" type="button" title="เมนูผู้จัดการ" aria-haspopup="true" aria-expanded="false" style="display:none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+            </button>
+            <div id="owner-menu" class="owner-menu" role="menu" hidden></div>
+          </div>
           <button id="btn-owner" class="btn-owner" type="button" title="ผู้จัดการ">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
@@ -791,7 +870,6 @@
   const btnOwner = document.getElementById('btn-owner');
   const configBanner = document.getElementById('config-banner');
   const heroEl = document.querySelector('header.hero');
-  const btnHeroImg = document.getElementById('btn-hero-img');
 
   /* ---------- ตั้งค่าหัวเว็บ: รูปพื้นหลัง, รูปโปรไฟล์, ชื่อเว็บ, ชื่อรอง ---------- */
   // ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้ตั้งค่า)
@@ -880,8 +958,6 @@
       img.src = url;
     });
   }
-
-  btnHeroImg.addEventListener('click', openHeroModal);
 
   function openHeroModal() {
     const draft = Object.assign({}, hero);
@@ -1025,22 +1101,70 @@
     });
   }
 
-  /* ---------- ปุ่มงานส่วนตัว / เจ้าของเว็บ ---------- */
-  btnOwner.addEventListener('click', async function () {
-    if (isOwner) {
-      await FBL.logout();
-      return;
-    }
-    openAuthModal();
+  /* ---------- ปุ่มกุญแจ (ยังไม่เข้าระบบ) / ปุ่มเมนูผู้จัดการ (เข้าระบบแล้ว) ---------- */
+  btnOwner.addEventListener('click', function () { openAuthModal(); });
+
+  const ICON = {
+    hero: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>',
+    arrange: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16"></path><path d="M3 8l4-4 4 4"></path><path d="M17 20V4"></path><path d="M21 16l-4 4-4-4"></path></svg>',
+    master: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg>',
+    logout: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>'
+  };
+  const btnMenu = document.getElementById('btn-menu');
+  const ownerMenu = document.getElementById('owner-menu');
+
+  // สร้างรายการในเมนูใหม่ทุกครั้งที่เปิด (หมวดที่จัดลำดับได้ขึ้นกับจำนวนการ์ด ณ ตอนนั้น)
+  function openOwnerMenu() {
+    let html = '<div class="menu-label">ตั้งค่าหน้านี้</div>' +
+      '<button type="button" class="menu-item" role="menuitem" data-act="hero">' + ICON.hero + 'ตั้งค่าหัวเว็บ</button>';
+    ['section', 'personal'].forEach(function (catId) {
+      const col = CATS[catId].col;
+      if (FBL.loaded(col) && FBL.docs(col).length > 1) {
+        html += '<button type="button" class="menu-item" role="menuitem" data-act="arrange" data-cat="' + catId + '">' + ICON.arrange +
+          '<span>จัดลำดับการ์ด<small>' + escapeAttr(CATS[catId].name) + '</small></span></button>';
+      }
+    });
+    html += '<div class="menu-label">ไปหน้าอื่น</div>' +
+      '<a class="menu-item" role="menuitem" href="master-data.html">' + ICON.master + 'ฐานข้อมูลกลาง</a>' +
+      '<div class="menu-sep"></div>' +
+      '<button type="button" class="menu-item menu-danger" role="menuitem" data-act="logout">' + ICON.logout + 'ออกจากระบบ</button>';
+    ownerMenu.innerHTML = html;
+    ownerMenu.hidden = false;
+    btnMenu.setAttribute('aria-expanded', 'true');
+  }
+  function closeOwnerMenu() {
+    ownerMenu.hidden = true;
+    btnMenu.setAttribute('aria-expanded', 'false');
+  }
+  btnMenu.addEventListener('click', function () {
+    if (ownerMenu.hidden) openOwnerMenu(); else closeOwnerMenu();
+  });
+  // คลิกนอกเมนู หรือกด Esc → ปิดเมนู
+  document.addEventListener('click', function (e) {
+    if (!ownerMenu.hidden && !e.target.closest('.owner-menu-wrap')) closeOwnerMenu();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !ownerMenu.hidden) { closeOwnerMenu(); btnMenu.focus(); }
+  });
+  ownerMenu.addEventListener('click', async function (e) {
+    const item = e.target.closest('.menu-item');
+    if (!item) return;
+    closeOwnerMenu();
+    const act = item.dataset.act;
+    if (act === 'hero') openHeroModal();
+    else if (act === 'arrange') { if (confirmLeaveArrange()) startArrange(item.dataset.cat); }
+    else if (act === 'logout') { if (confirmLeaveArrange()) await FBL.logout(); }
+    // ลิงก์ฐานข้อมูลกลาง: เปลี่ยนหน้าตามปกติ (ถ้ามีลำดับการ์ดที่ยังไม่บันทึก เบราว์เซอร์จะถามก่อน)
   });
 
   function setOwnerState(owner) {
     isOwner = owner;
-    btnOwner.classList.toggle('active', owner);
-    btnOwner.title = owner ? 'ออกจากงานส่วนตัว' : 'ผู้จัดการ';
-    btnHeroImg.style.display = owner ? '' : 'none';
-    document.getElementById('btn-master').style.display = owner ? '' : 'none';
+    // ยังไม่เข้าระบบ: เห็นแค่ปุ่มกุญแจ / เข้าระบบแล้ว: เห็นแค่ปุ่มเมนู (สีส้ม = กำลังเข้าระบบอยู่)
+    btnOwner.style.display = owner ? 'none' : '';
+    btnMenu.style.display = owner ? '' : 'none';
+    closeOwnerMenu();
     if (!owner) activeCategory = 'all';
+    arrange = null; // ออกจากโหมดจัดลำดับเสมอเมื่อเข้า/ออกระบบ
     if (owner) {
       // วาดหน้าทันที (การ์ดงานหมวดที่โหลดไว้แล้วแสดงได้เลย) แล้วค่อยวาดซ้ำเมื่องานส่วนตัวโหลดเสร็จ
       FBL.watch('sites_private', function () { renderCategories(); }).then(renderAll);
@@ -1285,18 +1409,21 @@
       btn.textContent = label;
       btn.dataset.cat = id;
       btn.addEventListener('click', function () {
+        if (!confirmLeaveArrange()) return;
         activeCategory = id;
         renderTabs();
-        renderCategories();
+        renderCategories(true);
       });
       tabsEl.appendChild(btn);
     });
   }
 
   /* ---------- Render cards ---------- */
-  function renderCategories() {
-    // ระหว่างลากการ์ด ห้ามวาดใหม่ (ไม่งั้นการ์ดจะเด้งกลับที่เดิม) — วาดทีหลังตอนปล่อย
-    if (cardDrag) { cardDrag.pendingRender = true; return; }
+  // force = true: วาดใหม่แม้อยู่ระหว่างจัดลำดับ (ใช้ตอนกดปุ่มจัดลำดับ/บันทึก/ยกเลิก)
+  function renderCategories(force) {
+    // ระหว่างจัดลำดับ ไม่วาดใหม่ตามข้อมูลที่ Firebase ส่งมา ไม่งั้นการ์ดที่ย้ายไว้จะเด้งกลับ
+    // (จะวาดใหม่ตามข้อมูลล่าสุดเองตอนกดบันทึกหรือยกเลิก)
+    if (arrange && force !== true) return;
     categoriesEl.innerHTML = '';
     const allIds = ['section'].concat(isOwner ? ['personal'] : []);
     const catsToShow = activeCategory === 'all' ? allIds : allIds.filter(function (id) { return id === activeCategory; });
@@ -1313,6 +1440,18 @@
         const title = document.createElement('h2');
         title.className = 'category-title';
         title.innerHTML = '<span class="category-dot ' + cat.dotClass + '"></span>' + cat.name;
+        // ระหว่างจัดลำดับหมวดนี้ (เริ่มจากเมนูผู้จัดการ): ปุ่มยกเลิก / บันทึก ข้างชื่อหมวด
+        if (arrange && arrange.catId === catId) {
+          const bar = document.createElement('div');
+          bar.className = 'arrange-bar';
+          bar.innerHTML =
+            '<span class="arrange-hint">ลาก ⋮⋮ เพื่อย้ายการ์ด</span>' +
+            '<button type="button" class="btn-arrange" data-act="cancel">ยกเลิก</button>' +
+            '<button type="button" class="btn-arrange btn-primary" data-act="save">บันทึก</button>';
+          bar.querySelector('[data-act="cancel"]').addEventListener('click', cancelArrange);
+          bar.querySelector('[data-act="save"]').addEventListener('click', function (e) { saveArrange(e.currentTarget, block); });
+          title.appendChild(bar);
+        }
         block.appendChild(title);
       }
 
@@ -1330,6 +1469,10 @@
       } else {
         const grid = document.createElement('div');
         grid.className = 'card-grid';
+        // ระหว่างจัดลำดับ: หมวดที่กำลังจัดมีที่จับ ⋮⋮ / ทุกหมวดซ่อนปุ่มแก้ไข-เพิ่มระบบไว้ก่อน
+        const isArranging = !!(arrange && arrange.catId === catId);
+        if (arrange) grid.classList.add('locked');
+        if (isArranging) grid.classList.add('arranging');
         filtered.forEach(function (site) {
           const card = document.createElement('div');
           card.className = 'card ' + cat.cardClass;
@@ -1356,12 +1499,12 @@
           if (isOwner) card.querySelector('.btn-copy').addEventListener('click', function (e) { copyLink(site.url, e.currentTarget); });
           if (isOwner) card.querySelector('.btn-edit').addEventListener('click', function () { openSiteModal(catId, site); });
           card.dataset.id = site.__id;
-          if (isOwner) {
+          if (isArranging) {
             const handle = document.createElement('span');
             handle.className = 'drag-handle';
             handle.title = 'ลากเพื่อย้ายการ์ด';
             handle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.7"></circle><circle cx="15" cy="5" r="1.7"></circle><circle cx="9" cy="12" r="1.7"></circle><circle cx="15" cy="12" r="1.7"></circle><circle cx="9" cy="19" r="1.7"></circle><circle cx="15" cy="19" r="1.7"></circle></svg>';
-            handle.addEventListener('pointerdown', function (e) { startCardDrag(e, card, grid, cat.col); });
+            handle.addEventListener('pointerdown', function (e) { startCardDrag(e, card, grid); });
             card.classList.add('has-handle');
             card.appendChild(handle);
           }
@@ -1373,7 +1516,7 @@
             card.rowBreakEl = rowBreak; // ตัวดันบรรทัดย้ายตามการ์ดไปด้วยตอนลาก
           }
         });
-        if (isOwner) {
+        if (isOwner && !arrange) {
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
           addBtn.className = 'btn-add-card';
@@ -1391,18 +1534,18 @@
   function renderAll() { renderTabs(); renderCategories(); }
 
   /* ---------- ลากวางเพื่อย้ายการ์ด (ผู้จัดการเท่านั้น) ----------
-     กดค้างที่ที่จับ ⋮⋮ แล้วลาก: การ์ดลอยตามนิ้ว/เมาส์ และสลับที่กับการ์ดที่ชี้อยู่ทันที
-     ปล่อยแล้วค่อยบันทึกลำดับใหม่ทั้งหมวดลง Firebase ครั้งเดียว — ย้ายได้เฉพาะในหมวดเดียวกัน */
+     ใช้ได้ในโหมดจัดลำดับเท่านั้น: กดค้างที่ที่จับ ⋮⋮ แล้วลาก การ์ดลอยตามนิ้ว/เมาส์ และสลับที่กับการ์ดที่ชี้อยู่ทันที
+     ย้ายได้เฉพาะในหมวดเดียวกัน — ยังไม่บันทึกจนกว่าจะกดปุ่ม "บันทึก" */
   let cardDrag = null;
 
-  function startCardDrag(e, card, grid, col) {
+  function startCardDrag(e, card, grid) {
     if (cardDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
     e.preventDefault();
     const r = card.getBoundingClientRect();
     cardDrag = {
-      card: card, grid: grid, col: col,
+      card: card, grid: grid,
       offX: e.clientX - r.left, offY: e.clientY - r.top,
-      before: cardIds(grid), pendingRender: false
+      from: { next: (card.rowBreakEl || card).nextSibling } // ไว้คืนที่เดิมถ้าถูกขัดจังหวะ
     };
     card.classList.add('dragging');
     document.body.classList.add('is-dragging');
@@ -1461,27 +1604,72 @@
     return d;
   }
 
-  async function endCardDrag() {
-    if (!cardDrag) return;
-    const d = finishCardDrag();
-    const ids = cardIds(d.grid);
-    if (ids.join('|') === d.before.join('|')) {
-      if (d.pendingRender) renderCategories();
-      return;
-    }
-    try {
-      await FBL.reorderSites(d.col, ids);
-    } catch (err) {
-      alert('บันทึกลำดับการ์ดไม่สำเร็จ: ' + (err.message || err));
-      renderCategories(); // คืนการ์ดกลับตำแหน่งเดิม
-    }
+  // ปล่อยการ์ด: แค่วางไว้ตรงนั้น ยังไม่บันทึก (บันทึกตอนกดปุ่ม "บันทึก")
+  function endCardDrag() {
+    if (cardDrag) finishCardDrag();
   }
 
+  // ถูกขัดจังหวะ (เช่น มีสายเข้า) — การ์ดใบนั้นกลับไปที่ที่วางล่าสุด
   function cancelCardDrag() {
     if (!cardDrag) return;
-    finishCardDrag();
-    renderCategories(); // ถูกขัดจังหวะ (เช่น มีสายเข้า) — คืนตำแหน่งเดิม
+    const d = finishCardDrag();
+    d.grid.insertBefore(d.card, d.from.next);
+    if (d.card.rowBreakEl) d.grid.insertBefore(d.card.rowBreakEl, d.card.nextSibling);
   }
+
+  /* ---------- โหมดจัดลำดับ: กด "จัดลำดับ" → ลากได้หลายครั้ง → กด "บันทึก" หรือ "ยกเลิก" ---------- */
+  let arrange = null; // { catId, before: [id เรียงตามเดิม] } ขณะกำลังจัดลำดับ
+
+  function startArrange(catId) {
+    arrange = { catId: catId, before: FBL.docs(CATS[catId].col).map(function (s) { return s.__id; }) };
+    // หมวดนั้นไม่ได้แสดงอยู่ (อยู่แท็บอื่น) — สลับแท็บให้
+    if (activeCategory !== 'all' && activeCategory !== catId) { activeCategory = catId; renderTabs(); }
+    renderCategories(true);
+    const grid = document.querySelector('.card-grid.arranging');
+    if (grid) grid.parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function arrangeChanged() {
+    const grid = arrange && document.querySelector('.card-grid.arranging');
+    return !!grid && cardIds(grid).join('|') !== arrange.before.join('|');
+  }
+
+  // ถามก่อนทิ้งลำดับที่ย้ายไว้แต่ยังไม่บันทึก — true = ไปต่อได้
+  function confirmLeaveArrange() {
+    if (!arrange) return true;
+    if (arrangeChanged() && !confirm('ลำดับการ์ดที่ย้ายไว้ยังไม่ได้บันทึก ต้องการยกเลิกการย้ายหรือไม่?')) return false;
+    arrange = null;
+    return true;
+  }
+
+  function cancelArrange() {
+    arrange = null;
+    renderCategories(true); // วาดใหม่ตามลำดับเดิมในฐานข้อมูล
+  }
+
+  async function saveArrange(btn, block) {
+    const grid = block.querySelector('.card-grid');
+    const ids = cardIds(grid);
+    if (ids.join('|') !== arrange.before.join('|')) {
+      btn.disabled = true;
+      btn.textContent = 'กำลังบันทึก...';
+      try {
+        await FBL.reorderSites(CATS[arrange.catId].col, ids);
+      } catch (err) {
+        alert('บันทึกลำดับการ์ดไม่สำเร็จ: ' + (err.message || err));
+        btn.disabled = false;
+        btn.textContent = 'บันทึก';
+        return; // ยังอยู่ในโหมดจัดลำดับ ลองกดบันทึกใหม่ได้
+      }
+    }
+    arrange = null;
+    renderCategories(true);
+  }
+
+  // ปิด/รีเฟรชหน้าเว็บระหว่างย้ายการ์ดที่ยังไม่บันทึก — ให้เบราว์เซอร์ถามก่อน
+  window.addEventListener('beforeunload', function (e) {
+    if (arrangeChanged()) { e.preventDefault(); e.returnValue = ''; }
+  });
 
   /* ---------- เริ่มระบบ ---------- */
   if (!window.FBL || !FBL.configured) {
